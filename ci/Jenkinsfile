@@ -2,11 +2,6 @@ pipeline {
     agent any
     
     stages {
-        stage('Clone repo') {
-            steps {
-                git credentialsId: 'github-ssh-key', url: 'git@github.com:JuanOntiv/Excel-2.git'
-            }
-        }
         stage('Test') {
             steps {
                 echo 'Arre.'
