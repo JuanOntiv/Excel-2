@@ -1,0 +1,24 @@
+/
+│
+├── backend/
+├── frontend/
+│
+├── tests/
+│   ├── backend/
+│   └── frontend/
+│
+├── docker/              
+│   ├── backend/
+│   │   └── Dockerfile
+│   ├── frontend/
+│   │   └── Dockerfile
+│   └── docker-compose.yml
+│
+├── ci/                 
+│   ├── Jenkinsfile
+│   └── scripts/
+│
+├── .env
+├── .gitignore
+├── requirements.txt
+├── README.md
