@@ -1,11 +1,40 @@
 pipeline {
     agent any
     
+    environment {
+            APP_NAME="Excel-2"
+    }
+
     stages {
-        stage('Test') {
+        stage('Checkout') {
             steps {
-                echo 'Arre.'
+                echo "Clonando repo"
+                checkout scm
             }
+        }
+        stage('Backend Tests') {
+            steps {
+                echo "Aqui van los tests de Python"
+            }
+        }
+        stage('Build Docker Image') {
+            steps {
+                echo "Aqui se construyen los contenedores"        
+            }
+        }
+        stage('Run Test') {
+            steps {
+                echo 'Probando Contenedores'
+            }
+        }
+    }
+
+    post {
+        success {
+            echo "Pipeline completado :)"
+        }
+        failure {
+            echo "Pipeline fallo :("
         }
     }
 }
