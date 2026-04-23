@@ -5,6 +5,8 @@ pipeline {
             APP_NAME="Excel-2"
     }
 
+
+
     stages {
         stage('Checkout') {
             steps {
@@ -12,22 +14,40 @@ pipeline {
                 checkout scm
             }
         }
+
+        stage('Lint') {
+            when {
+                branch 'main'
+                branch pattern: "feature/.*", comparator: "REGEXP"
+            }
+            steps {
+                echo "sh npm instal"
+                echo "sh npm run lint"
+                echo "El package.son debe tener: 'scripts': {'lint': 'eslint'. }"
+            }
+        }
+
         stage('Backend Tests') {
             steps {
                 echo "Aqui van los tests de Python"
             }
         }
-        stage('Build Docker Image') {
+
+        stage('Run Test Features') {
+            when {
+                branch pattern: "feature/.*", comparator: "REGEXP"        
+            }
             steps {
-                echo "Aqui se construyen los contenedores"        
+                echo 'Esto es un feature'
             }
         }
-        stage('Run Test') {
-            steps {
-                echo 'Probando Contenedores'
+
+        stage('PR') {
+                changeRequest target: 'main'
             }
-        }
     }
+
+
 
     post {
         success {
