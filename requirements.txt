@@ -1,0 +1,16 @@
+alembic==1.16.5
+asyncpg==0.30.0
+fastapi==0.121.2
+httptools==0.6.4           # mejora rendimiento de uvicorn
+psycopg2-binary
+python-dotenv==1.2.1
+python-jose==3.5.0
+pydantic==2.12.4
+pydantic_core==2.41.5
+pydantic-settings==2.7.0
+python-multipart==0.0.20   # para subir archivos o formularios
+sqlalchemy==2.0.44
+uvicorn[standard]==0.38.0
+passlib==1.7.4
+bcrypt==4.0.1
+passlib[bcrypt]==1.7.4
