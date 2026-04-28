@@ -15,6 +15,63 @@ pipeline {
             }
         }
 
+        
+
+        stage ('Lint Backend') {
+            steps {
+                catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
+                    echo 'Executing flake8...'
+                    script {
+                        sh '''
+                            docker run --rm \
+                            -v $WORKSPACE:/app \
+                            python:3.11-slim \
+                            bash -c "pip install flake8 && flake8 /app/backend --max-line-length1=120"
+                        '''
+                    }
+                }
+            }
+        }
+
+
+
+        stage ('Lint Frontend') {
+            steps {
+                catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
+                    echo "Executing ESLint..."
+                    script {
+                        sh '''
+                            docker run --rm \
+                            -v $WORKSPACE:/app \
+                            node:20 \
+                            bash -c "cd /app/frontend && npm install --silent && npm run lint"
+                        '''
+                    }
+                }
+            }
+        }
+        
+
+
+        stage('Build Containers') {
+            steps {
+                sh '../docker/docker compose build'
+            }
+        }
+
+
+        stage('Test Containers') {
+                steps {
+                sh 'docker compose up -d'
+                sleep 10
+                sh 'curl --fail http://localhost:8080/health || exit 1'
+                sh 'curl --fail http://localhost:3000 || exit 1'
+            }
+        }
+
+
+
+        // examples
         stage('Lint') {
             when {
                 branch 'main'
@@ -43,16 +100,27 @@ pipeline {
         }
 
         stage('PR') {
-                changeRequest target: 'main'
+            when { 
+                changeRequest target: 'main' 
             }
+            steps {
+                echo "Validaciones extra para pull requests"
+            }
+        }
     }
 
 
 
     post {
+        always {
+            sh 'docker compose down -v'
+            sh 'docker system prune -f'
+        }
+        
         success {
             echo "Pipeline completado :)"
         }
+        
         failure {
             echo "Pipeline fallo :("
         }
