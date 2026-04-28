@@ -23,16 +23,20 @@ pipeline {
                     echo 'Executing flake8...'
                     script {
                         sh '''
+                            echo "WORKSPACE=$WORKSPACE"
+                            pwd
+                            ls -la
+
                             docker run --rm \
                             -v $WORKSPACE:/app \
                             python:3.11-slim \
+                            ls -la /app
                             bash -c "pip install flake8 && flake8 /app/backend --max-line-length=120"
                         '''
                     }
                 }
             }
         }
-
 
 
         stage ('Lint Frontend') {

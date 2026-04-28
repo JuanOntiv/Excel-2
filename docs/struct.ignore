@@ -12,13 +12,16 @@
 │   │   └── Dockerfile
 │   ├── frontend/
 │   │   └── Dockerfile
-│   └── docker-compose.yml
+│   ├── ci/
+│   │   └── Dockerfile
+│   ├── .env
+│   ├── docker-compose.yml
+│   └── docker-compose.ci.yml
 │
 ├── ci/                 
 │   ├── Jenkinsfile
 │   └── scripts/
 │
-├── .env
 ├── .gitignore
 ├── requirements.txt
 ├── README.md
