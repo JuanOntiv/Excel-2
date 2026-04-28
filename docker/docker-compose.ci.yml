@@ -1,0 +1,57 @@
+# version: "3.9"
+
+services:
+  db:
+    image: postgres:15-alpine
+    container_name: ci_excel_db
+    restart: "no"
+    env_file:
+      - .env
+    # environment:
+    #   POSTGRES_USER: ${POSTGRES_USER}
+    #   POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    #   POSTGRES_DB: ${POSTGRES_DB}
+    ports:
+      - "5433:5432" 
+    volumes:
+      - ci_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 3s
+      timeout: 3s
+      retries: 3
+
+  backend:
+    build:
+      context: ../
+      dockerfile: docker/backend/Dockerfile
+    container_name: ci_excel_back
+    restart: "no"
+    depends_on:
+      - db
+    env_file:
+      - .env
+    ports:
+      - "8001:8000"
+    volumes:
+      - ../backend:/app/backend
+    command: >
+      sh -c "alembic upgrade head &&
+            uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload"
+
+  frontend:
+    build: 
+      context: ..
+      dockerfile: docker/frontend/Dockerfile
+    container_name: ci_excel_front
+    restart: "no"
+    ports:
+      - "3001:3000"
+    volumes:
+      - ../frontend:/app
+      - /app/node_modules
+    command: npm run dev -- --host 0.0.0.0
+
+volumes:
+  ci_postgres_data:
+
