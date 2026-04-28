@@ -29,7 +29,7 @@ pipeline {
                     echo 'Executing flake8...'
                     script {
                         sh '''
-                            python -m pip install flake8
+                            python -m pip install --no-cache-dir flake8
                             flake8 backend --max-line-length=120
                             ls -la 
                         '''
@@ -52,7 +52,7 @@ pipeline {
                         sh '''
                             cd frontend
                             npm install --silent 
-                            npm run lint"
+                            npm run lint
                         '''
                     }
                 }
@@ -65,7 +65,7 @@ pipeline {
             agent {
                 docker {
                     image 'docker:cli'
-                    args '-v /var/run/docker.sock:/var/run/docker.sock'
+                    args '-v /var/run/docker.sock:/var/run/docker.sock -e HOME=/tmp'
                 }
             }
             steps {
