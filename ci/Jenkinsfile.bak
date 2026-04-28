@@ -18,20 +18,20 @@ pipeline {
         
 
         stage ('Lint Backend') {
-            agent {
-                docker {
-                    image 'python:3.11-slim'
-                }    
-            }
-
             steps {
                 catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
                     echo 'Executing flake8...'
                     script {
                         sh '''
-                            python -m pip install flake8
-                            flake8 backend --max-line-length=120
-                            ls -la 
+                            echo "WORKSPACE=$WORKSPACE"
+                            pwd
+                            ls -la
+
+                            docker run --rm \
+                            -v $WORKSPACE:/app \
+                            python:3.11-slim \
+                            ls -la /app
+                            bash -c "pip install flake8 && flake8 /app/backend --max-line-length=120"
                         '''
                     }
                 }
@@ -40,19 +40,15 @@ pipeline {
 
 
         stage ('Lint Frontend') {
-            agent {
-                docker {
-                    image 'node:20-bullseye-slim'
-                    }
-                }
             steps {
                 catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
                     echo "Executing ESLint..."
                     script {
                         sh '''
-                            cd frontend
-                            npm install --silent 
-                            npm run lint"
+                            docker run --rm \
+                            -v $WORKSPACE:/app \
+                            node:20 \
+                            bash -c "cd /app/frontend && npm install --silent && npm run lint"
                         '''
                     }
                 }
@@ -62,33 +58,18 @@ pipeline {
 
 
         stage('Build Containers') {
-            agent {
-                docker {
-                    image 'docker:cli'
-                    args '-v /var/run/docker.sock:/var/run/docker.sock'
-                }
-            }
             steps {
-                sh 'docker compose -f docker/docker-compose.ci.yml build'
+                sh 'docker compose -f ../docker/docker-compose.ci.yml build'
             }
         }
 
 
         stage('Test Containers') {
-            agent {
-                docker {
-                    image 'docker:cli'
-                    args '-v /var/run/docker.sock:/var/run/docker.sock'
-                }
-            }
             steps {
-                sh 'docker compose -f docker/docker-compose.ci.yml up -d'
-                sh 'sleep 10'
-                sh 'docker compose -f docker/docker-compose.ci.yml ps'
-
+                sh 'docker compose -f ../docker/docker-compose.ci.yml up -d'
+                sleep 10
                 sh 'curl --fail http://localhost:8081/health || exit 1'
-                //sh 'curl --fail http://localhost:3001 || exit 1'
-                sh 'docker compose -f docker/docker-compose.ci.yml exec backend curl http://localhost:8080/health'
+                sh 'curl --fail http://localhost:3001 || exit 1'
             }
         }
 
@@ -136,7 +117,8 @@ pipeline {
 
     post {
         always {
-            sh 'docker compose -f docker/docker-compose.ci.yml down -v'
+            sh 'docker compose -f ../docker/docker-compose.ci.yml down -v'
+            sh 'docker system prune -f'
         }
         
         success {
