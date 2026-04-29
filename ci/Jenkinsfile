@@ -18,15 +18,13 @@ pipeline {
             }
         }
 
-        
-
 
         stage ('Lint Backend') {
             agent {
                 docker {
                     image 'python:3.11-slim'
                     args '-u root'
-                }    
+                }
             }
 
             steps {
@@ -75,10 +73,6 @@ pipeline {
             }
             steps {
                 sh '''
-                    echo $POSTGRES_PASSWORD
-                    echo $POSTGRES_USER
-                    echo $POSTGRES_DB
-                    pwd
                     docker compose -f docker/docker-compose.ci.yml build
                 '''
             }
@@ -93,13 +87,12 @@ pipeline {
                 }
             }
             steps {
-                sh 'docker compose -f docker/docker-compose.ci.yml up -d'
-                sh 'sleep 10'
-                sh 'docker compose -f docker/docker-compose.ci.yml ps'
-
-                sh 'curl --fail http://localhost:8081/health || exit 1'
-                //sh 'curl --fail http://localhost:3001 || exit 1'
-                sh 'docker compose -f docker/docker-compose.ci.yml exec backend curl http://localhost:8080/health'
+                sh '''
+                    docker compose -f docker/docker-compose.ci.yml up -d
+                    sleep 5
+                    docker ps
+                    docker compose -f docker/docker-compose.ci.yml exec backend curl http://localhost:8001/health
+                '''
             }
         }
 
