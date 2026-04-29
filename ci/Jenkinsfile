@@ -88,7 +88,7 @@ pipeline {
             agent {
                 docker {
                     image 'docker:cli'
-                    args '-v /var/run/docker.sock:/var/run/docker.sock'
+                    args '-u root -v /var/run/docker.sock:/var/run/docker.sock'
                 }
             }
             steps {
@@ -103,7 +103,6 @@ pipeline {
         }
 
 
-
         // examples
         stage('Lint') {
             when {
@@ -114,21 +113,6 @@ pipeline {
                 echo "sh npm instal"
                 echo "sh npm run lint"
                 echo "El package.son debe tener: 'scripts': {'lint': 'eslint'. }"
-            }
-        }
-
-        stage('Backend Tests') {
-            steps {
-                echo "Aqui van los tests de Python"
-            }
-        }
-
-        stage('Run Test Features') {
-            when {
-                branch pattern: "feature/.*", comparator: "REGEXP"        
-            }
-            steps {
-                echo 'Esto es un feature'
             }
         }
 
@@ -146,7 +130,9 @@ pipeline {
 
     post {
         always {
-            sh 'docker compose -f docker/docker-compose.ci.yml down -v'
+            node {
+                sh 'docker compose -f docker/docker-compose.ci.yml down -v'
+            }
         }
         
         success {
