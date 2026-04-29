@@ -5,7 +5,7 @@ pipeline {
             APP_NAME="Excel-2"
             POSTGRES_USER = credentials('postgres-user')
             POSTGRES_PASSWORD = credentials('postgres-pass')
-            POSTGRES_DB = excel_db 
+            POSTGRES_DB = 'ci_excel_db'
     }
 
 
