@@ -20,6 +20,7 @@ pipeline {
 
         
 
+
         stage ('Lint Backend') {
             agent {
                 docker {
@@ -64,7 +65,7 @@ pipeline {
         }
         
 
-
+// Container tests
         stage('Build Containers') {
             agent {
                 docker {
@@ -103,6 +104,7 @@ pipeline {
         }
 
 
+
         // examples
         stage('Lint') {
             when {
@@ -125,7 +127,6 @@ pipeline {
             }
         }
     }
-
 
 
     post {
