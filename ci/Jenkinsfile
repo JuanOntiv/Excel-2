@@ -89,11 +89,33 @@ pipeline {
                 }
             }
             steps {
-                sh '''
-                    docker compose -f docker/docker-compose.ci.yml up -d
-                    sleep 10
-                    docker ps -a
-                '''
+                script {
+                    // Pasar las variables al entorno para docker-compose
+                    withEnv([
+                        "POSTGRES_USER=${POSTGRES_USER}",
+                        "POSTGRES_PASSWORD=${POSTGRES_PASSWORD}",
+                        "POSTGRES_DB=${POSTGRES_DB}"
+                    ]) {
+                        sh '''
+                            docker compose -f docker/docker-compose.ci.yml up -d
+                            sleep 10
+                            # Verificar que los contenedores sigan corriendo
+                            RUNNING=$(docker ps --filter "status=running" --format "table {{.Names}}" | grep -E "ci_excel_back|ci_excel_front" | wc -l)
+                            if [ "$RUNNING" -ne 2 ]; then
+                                echo "Error: frontend o backend no están corriendo"
+                                docker logs ci_excel_back --tail 50
+                                docker logs ci_excel_front --tail 50
+                                exit 1
+                            fi
+                        '''
+                    }
+                }
+
+                // sh '''
+                //     docker compose -f docker/docker-compose.ci.yml up -d
+                //     sleep 10
+                //     docker ps -a
+                // '''
             }
         }
 
