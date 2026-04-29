@@ -29,8 +29,11 @@ services:
     restart: "no"
     depends_on:
       - db
-    env_file:
-      - .env
+    # env_file:
+    #   - .env
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     ports:
       - "8001:8000"
     volumes:
