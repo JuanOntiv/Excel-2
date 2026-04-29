@@ -71,8 +71,10 @@ pipeline {
             }
             steps {
                 sh '''
+                    pwd
+                    ls -la
                     export $(grep -v '^#' docker/.env | xargs)
-                    sh 'docker compose -f docker/docker-compose.ci.yml build'
+                    docker compose -f docker/docker-compose.ci.yml build
                 '''
             }
         }
