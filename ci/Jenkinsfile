@@ -66,11 +66,14 @@ pipeline {
             agent {
                 docker {
                     image 'docker:cli'
-                    args '-v /var/run/docker.sock:/var/run/docker.sock -e HOME=/tmp'
+                    args '-u root -v /var/run/docker.sock:/var/run/docker.sock -e HOME=/tmp'
                 }
             }
             steps {
-                sh 'docker compose -f docker/docker-compose.ci.yml build'
+                sh '''
+                    export $(grep -v '^#' docker/.env | xargs)
+                    sh 'docker compose -f docker/docker-compose.ci.yml build'
+                '''
             }
         }
 
