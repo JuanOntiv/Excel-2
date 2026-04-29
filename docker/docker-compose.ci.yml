@@ -26,7 +26,7 @@ services:
       context: ../
       dockerfile: docker/backend/Dockerfile
     container_name: ci_excel_back
-    restart: "no"
+    restart: always
     depends_on:
       - db
     # env_file:
@@ -47,7 +47,7 @@ services:
       context: ..
       dockerfile: docker/frontend/Dockerfile
     container_name: ci_excel_front
-    restart: "no"
+    restart: always
     ports:
       - "3001:3000"
     volumes:
