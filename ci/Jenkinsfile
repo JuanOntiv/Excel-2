@@ -3,6 +3,9 @@ pipeline {
     
     environment {
             APP_NAME="Excel-2"
+            POSTGRES_USER = credentials('postgres-user')
+            POSTGRES_PASSWORD = credentials('postgres-pass')
+            POSTGRES_DB = ci_excel_db 
     }
 
 
@@ -71,9 +74,10 @@ pipeline {
             }
             steps {
                 sh '''
+                    echo $POSTGRES_PASSWORD
+                    echo $POSTGRES_USER
+                    echo $POSTGRES_DB
                     pwd
-                    ls -la
-                    export $(grep -v '^#' docker/.env | xargs)
                     docker compose -f docker/docker-compose.ci.yml build
                 '''
             }
