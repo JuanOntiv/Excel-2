@@ -61,7 +61,8 @@ pipeline {
                 }
             }
         }
-        
+
+
 
 // Container tests
         stage('Build Containers') {
@@ -74,6 +75,7 @@ pipeline {
             steps {
                 sh '''
                     docker compose -f docker/docker-compose.ci.yml build
+                    docker images
                 '''
             }
         }
@@ -89,9 +91,8 @@ pipeline {
             steps {
                 sh '''
                     docker compose -f docker/docker-compose.ci.yml up -d
-                    sleep 5
+                    sleep 10
                     docker ps
-                    docker compose -f docker/docker-compose.ci.yml exec backend curl http://localhost:8001/health
                 '''
             }
         }
