@@ -5,6 +5,7 @@ from sqlmodel import SQLModel, Field, Column, Relationship, Session, create_engi
 from sqlalchemy import String, DECIMAL
 from typing import Optional
 
+
 class IncomeCreate(SQLModel):
     user_id: UUID
     name: str
@@ -24,9 +25,9 @@ class IncomeUpdate(SQLModel):
     wallet_id: Optional[UUID] = None
 
 
-class UserRead(SQLModel):
-    user_id: UUID
+class IncomeRead(SQLModel):
     id: UUID
+    user_id: UUID
     name: str
     description: str
     amount: float
@@ -48,6 +49,7 @@ class Income(SQLModel, table=True):
     user_id: UUID = Field(
         foreign_key="user.id", nullable=False
     )
+    users: "Users" = Relationship(back_populates="incomes")
 
     name: str = Field(
         sa_column=Column(String(150),
@@ -68,14 +70,15 @@ class Income(SQLModel, table=True):
         nullable=False
     )
 
-
     category_id: UUID = Field(
         foreign_key="category.id", nullable=False
     )
+    categorys: "Categorys" = Relationship(back_populates="income")
 
     wallet_id: UUID = Field(
         foreign_key="wallet.id", nullable=True
     )
+    wallets: "Wallets" = Relationship(back_populates="income")
 
     is_active: bool = Field(
         default=True,
