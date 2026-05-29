@@ -14,7 +14,6 @@ class UserUpdate(SQLModel):
     name: Optional[str] = None
     mail: Optional[str] = None
     password_hash: Optional[str] = None
-    role_id: Optional[UUID] = None
     is_active: Optional[bool] = None
 
 
@@ -22,7 +21,6 @@ class UserRead(SQLModel):
     id: UUID
     name: str
     mail: str
-    role_id: UUID
     is_active: bool
     created_at: datetime
     updated_at: datetime
@@ -63,5 +61,9 @@ class User(SQLModel, table=True):
         nullable=False
     )
 
-    # Relaciones
-    #
+    # Relationships
+    incomes: list["Incomes"] = Relationship(back_populates="users")
+    egress: list["Egress"] = Relationship(back_populates="users")
+    categorys: list["Categorys"] = Relationship(back_populates="users")
+    transactions: list["Transactions"] = Relationship(back_populates="users")
+    wallets: list["Wallets"] = Relationship(back_populates="users")

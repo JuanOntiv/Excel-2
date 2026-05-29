@@ -24,7 +24,7 @@ class EgressUpdate(SQLModel):
     wallet_id: Optional[UUID] = None
 
 
-class UserRead(SQLModel):
+class EgressRead(SQLModel):
     user_id: UUID
     id: UUID
     name: str
@@ -48,6 +48,7 @@ class Egress(SQLModel, table=True):
     user_id: UUID = Field(
         foreign_key="user.id", nullable=False
     )
+    users: "Users" = Relationship(back_populates="egress")
 
     name: str = Field(
         sa_column=Column(String(150),
@@ -68,14 +69,15 @@ class Egress(SQLModel, table=True):
         nullable=False
     )
 
-
     category_id: UUID = Field(
         foreign_key="category.id", nullable=False
     )
+    categorys: "Categorys" = Relationship(back_populates="egress")
 
     wallet_id: UUID = Field(
         foreign_key="wallet.id", nullable=True
     )
+    wallets: "Wallets" = Relationship(back_populates="egress")
 
     is_active: bool = Field(
         default=True,
