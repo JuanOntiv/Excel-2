@@ -15,18 +15,20 @@ class CategoryType(str, Enum):
 class CategoryCreate(SQLModel):
     name: str
     type: CategoryType
-    user_id: UUID
+    # user_id: UUID #pero no se si va o no
 
 
 class CategoryUpdate(SQLModel):
     name: Optional[str] = None
     type: Optional[CategoryType] = None
-    user_id: Optional[UUID] = None
+    is_active: Optional[bool] = None
+    # user_id: Optional[UUID] = None
 
 
 class CategoryRead(SQLModel):
     user_id: UUID
     id: UUID
+    name: str
     type: CategoryType
     wallet_id: UUID
     is_active: bool
@@ -42,7 +44,7 @@ class Category(SQLModel, table=True):
     )
 
     user_id: UUID = Field(
-        foreign_key="user.id", nullable=False
+        foreign_key="user.id", nullable=True
     )
     users: "Users" = Relationship(back_populates="categorys")
 
