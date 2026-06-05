@@ -1,10 +1,12 @@
 pipeline {
     agent any
-    
-    environment {
-            APP_NAME="Excel-2"
-    }
 
+    environment {
+        APP_NAME="Excel-2"
+	    POSTGRES_USER = credentials('postgres-user')
+	    POSTGRES_PASSWORD = credentials('postgres-pass')
+	    POSTGRES_DB = credentials('ci_excel_db')
+    }
 
 
     stages {
@@ -15,17 +17,57 @@ pipeline {
             }
         }
 
-        stage('Lint') {
-            when {
-                branch 'main'
-                branch pattern: "feature/.*", comparator: "REGEXP"
-            }
-            steps {
-                echo "sh npm instal"
-                echo "sh npm run lint"
-                echo "El package.son debe tener: 'scripts': {'lint': 'eslint'. }"
-            }
-        }
+        stage('Lint BACKEND') {
+		    agent {
+			   	docker {
+				    image 'python:3.11-slim' //cambiar a entorno virtual
+				    args '-u root'
+				}
+		    }
+		    steps {
+		    	catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
+				    echo 'Executing flake8...'
+				    script {
+				    	sh '''
+					    	python -m pip install --no-cache-dir flake8
+							flake8 backend --max-line-length=120
+							ls -la
+						'''
+					}
+				}
+			}
+		}
+		stage('Lint FRONTEND') {
+			agent {
+				docker {
+					image 'node:20-bullseye-slim'
+				}
+			}
+			steps {
+				catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
+					echo 'Executing ESLint'
+					script {
+						sh '''
+							cd frontend
+							npm install --silent
+							npm run lint
+						'''
+					}
+				}
+			}
+		}
+
+
+        //     when {
+        //         branch 'main'
+        //         branch pattern: "feature/.*", comparator: "REGEXP"
+        //     }
+        //     steps {
+        //         echo "sh npm instal"
+        //         echo "sh npm run lint"
+        //         echo "El package.son debe tener: 'scripts': {'lint': 'eslint'. }"
+        //     }
+        // }
 
         stage('Backend Tests') {
             steps {
@@ -35,7 +77,7 @@ pipeline {
 
         stage('Run Test Features') {
             when {
-                branch pattern: "feature/.*", comparator: "REGEXP"        
+                branch pattern: "feature/.*", comparator: "REGEXP"
             }
             steps {
                 echo 'Esto es un feature'
