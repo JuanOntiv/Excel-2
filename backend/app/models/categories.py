@@ -30,7 +30,6 @@ class CategoryRead(SQLModel):
     id: UUID
     name: str
     type: CategoryType
-    wallet_id: UUID
     is_active: bool
     created_at: datetime
     updated_at: datetime
@@ -51,11 +50,6 @@ class Category(SQLModel, table=True):
     type: CategoryType = Field(
         nullable=False
     )
-
-    wallet_id: UUID = Field(
-        foreign_key="wallet.id", nullable=True
-    )
-    wallets: "Wallets" = Relationship(back_populates="categorys")
 
     is_active: bool = Field(
         default=True,
