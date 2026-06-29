@@ -1,28 +1,33 @@
 from datetime import datetime
 from uuid import UUID, uuid4
-from enum import Enum
-from sqlmodel import SQLModel, Field, Column, Relationship, Session, create_engine
-from sqlalchemy import String, BOOLEAN
-from typing import Optional
+from sqlmodel import SQLModel, Field, Column, Relationship
+from sqlalchemy import String
+from typing import Optional, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from users import User
+    from wallet_rules import WalletRule
+    from transactions_wallets import TransactionWallet
 
 
 class WalletCreate(SQLModel):
     name: str
-    description: str
-    is_default: bool
+    description: Optional[str] = None
+    is_default: bool = False
 
 
 class WalletUpdate(SQLModel):
     name: Optional[str] = None
     description: Optional[str] = None
     is_default: Optional[bool] = None
+    is_active: Optional[bool] = None
 
 
 class WalletRead(SQLModel):
     id: UUID
     user_id: UUID
     name: str
-    description: str
+    description: Optional[str] = None
     is_default: bool
     is_active: bool
     created_at: datetime
@@ -37,22 +42,21 @@ class Wallet(SQLModel, table=True):
     )
 
     user_id: UUID = Field(
-        foreign_key="user.id", nullable=False
+        foreign_key="users.id", nullable=False
     )
-    users: "Users" = Relationship(back_populates="wallets")
 
     name: str = Field(
         sa_column=Column(String(150),
         nullable=False)
     )
 
-    description: str = Field(
-        sa_column=Column(String(150),
-        nullable=False)
+    description: Optional[str] = Field(
+        default=None,
+        sa_column=Column(String(150),nullable=False)
     )
 
     is_default: bool = Field(
-        default=True,
+        default=False,
         nullable=False
     )
 
@@ -72,7 +76,6 @@ class Wallet(SQLModel, table=True):
     )
 
     # Relationships
-    users: list["Users"] = Relationship(back_populates="wallets")
-    incomes: list["Incomes"] = Relationship(back_populates="wallets")
-    egress: list["Egress"] = Relationship(back_populates="wallets")
-    transactions: list["Transactions"] = Relationship(back_populates="wallets")
+    user: "User" = Relationship(back_populates="wallets")
+    wallet_rules: list["WalletRule"] = Relationship(back_populates="wallet")
+    transaction_wallets: list["TransactionWallet"] = Relationship(back_populates="wallet")

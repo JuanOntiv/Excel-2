@@ -1,33 +1,41 @@
 from datetime import datetime
 from uuid import UUID, uuid4
 from enum import Enum
-from sqlmodel import SQLModel, Field, Column, Relationship, Session, create_engine
-from sqlalchemy import String, Enum
-from typing import Optional
+from sqlmodel import SQLModel, Field, Column, Relationship
+from sqlalchemy import String
+from typing import Optional, TYPE_CHECKING
+
+
+if TYPE_CHECKING:
+    from users import User
+    from transactions import Transaction
+    from recurring_transactions import RecurringTransaction
+    from wallet_rules import WalletRule
+
 
 # To use with ENUM
 class CategoryType(str, Enum):
-    INGRESS = "ingress"
-    EGRESS = "egress"
+    INCOME = "income"
+    EXPENSE = "expense"
     BOTH = "both"
 
 
 class CategoryCreate(SQLModel):
-    name: str
-    type: CategoryType
-    # user_id: UUID #pero no se si va o no
+	user_id: UUID
+	name: str
+	type: CategoryType
 
 
 class CategoryUpdate(SQLModel):
     name: Optional[str] = None
     type: Optional[CategoryType] = None
     is_active: Optional[bool] = None
-    # user_id: Optional[UUID] = None
+    user_id: Optional[UUID] = None
 
 
 class CategoryRead(SQLModel):
-    user_id: UUID
     id: UUID
+    user_id: Optional[UUID] = None
     name: str
     type: CategoryType
     is_active: bool
@@ -43,9 +51,14 @@ class Category(SQLModel, table=True):
     )
 
     user_id: UUID = Field(
-        foreign_key="user.id", nullable=True
+    	default=None,
+        foreign_key="users.id",
+        nullable=True
     )
-    users: "Users" = Relationship(back_populates="categorys")
+
+    name: str = Field(
+        sa_column=Column(String(150), nullable=False)
+    )
 
     type: CategoryType = Field(
         nullable=False
@@ -67,7 +80,7 @@ class Category(SQLModel, table=True):
     )
 
     # Relationships
-    users: list["Users"] = Relationship(back_populates="categorys")
-    incomes: list["Incomes"] = Relationship(back_populates="categorys")
-    egress: list["Egress"] = Relationship(back_populates="categorys")
-    transactions: list["Transactions"] = Relationship(back_populates="categorys")
+    user: Optional["User"] = Relationship(back_populates="categories")
+    transactions: list["Transaction"] = Relationship(back_populates="category")
+    recurring_transactions: list["RecurringTransaction"] = Relationship(back_populates="category")
+    wallet_rules: list["WalletRule"] = Relationship(back_populates="category")

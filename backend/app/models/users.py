@@ -2,18 +2,29 @@ from datetime import datetime
 from uuid import UUID, uuid4
 from sqlmodel import SQLModel, Field, Column, Relationship, Session, create_engine
 from sqlalchemy import String
-from typing import Optional
+from typing import Optional, TYPE_CHECKING
+
+
+if TYPE_CHECKING:
+    from categories import Category
+    from transactions import Transaction
+    from wallets import Wallet
+    from wallet_rules import WalletRule
+    from recurring_transactions import RecurringTransaction
+    from logs import Log
+    from refresh_tokens import RefreshToken
+
 
 class UserCreate(SQLModel):
     name: str
     mail: str
-    password_hash: str
+    password: str
 
 
 class UserUpdate(SQLModel):
     name: Optional[str] = None
     mail: Optional[str] = None
-    password_hash: Optional[str] = None
+    password: Optional[str] = None
     is_active: Optional[bool] = None
 
 
@@ -22,6 +33,7 @@ class UserRead(SQLModel):
     name: str
     mail: str
     is_active: bool
+    is_admin: bool
     created_at: datetime
     updated_at: datetime
 
@@ -44,10 +56,15 @@ class User(SQLModel, table=True):
         unique=True)
     )
 
-    password_hash: str = Field(nullable=False)
+    password: str = Field(nullable=False)
 
     is_active: bool = Field(
         default=True,
+        nullable=False
+    )
+
+    is_admin: bool = Field(
+        default=False,
         nullable=False
     )
 
@@ -62,8 +79,10 @@ class User(SQLModel, table=True):
     )
 
     # Relationships
-    incomes: list["Incomes"] = Relationship(back_populates="users")
-    egress: list["Egress"] = Relationship(back_populates="users")
-    categorys: list["Categorys"] = Relationship(back_populates="users")
-    transactions: list["Transactions"] = Relationship(back_populates="users")
-    wallets: list["Wallets"] = Relationship(back_populates="users")
+    categories: list["Category"] = Relationship(back_populates="user")
+    transactions: list["Transaction"] = Relationship(back_populates="user")
+    wallets: list["Wallet"] = Relationship(back_populates="user")
+    wallet_rules: list["WalletRule"] = Relationship(back_populates="user")
+    recurring_transactions: list["RecurringTransaction"] = Relationship(back_populates="user")
+    logs: list["Log"] = Relationship(back_populates="user")
+    refresh_tokens: list["RefreshToken"] = Relationship(back_populates="user")
