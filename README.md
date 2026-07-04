@@ -32,9 +32,10 @@ Ejecuta:
 ```bash
 cd docker
 docker compose up --build
+```
 
 En caso de haber una migracion nueva:
-
+```bash
 docker exec -it nombre_contenedor bash
 alembic upgrade head
 ```
