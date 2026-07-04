@@ -51,7 +51,7 @@ def promote_or_create_admin(mail: str) -> None:
         new_admin = User(
             name=name,
             mail=mail,
-            password_hash=hash_password(password),
+            password=hash_password(password),
             is_admin=True,
         )
         session.add(new_admin)

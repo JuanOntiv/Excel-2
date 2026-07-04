@@ -59,7 +59,7 @@ class Transaction(SQLModel, table=True):
     )
 
     user_id: UUID = Field(
-        foreign_key="user.id", nullable=False
+        foreign_key="users.id", nullable=False
     )
 
     name: str = Field(

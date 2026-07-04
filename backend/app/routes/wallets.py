@@ -1,58 +1,69 @@
-# app/routes/wallets.py
+from datetime import datetime
+from uuid import UUID
+from typing import List
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlmodel import Session, select
-from uuid import UUID
-from datetime import datetime
-from typing import List, Optional
 
 from app.db.db import get_session
 from app.models.wallets import Wallet, WalletCreate, WalletUpdate, WalletRead
 from app.models.users import User
-from app.auth import get_current_user
+from app.models.logs import LogAction, LogLevel
+from app.auth.dependencies import get_current_user
 from app.utils.logs_decorator import log_action
 
 router = APIRouter(prefix="/wallets", tags=["Wallets"])
 
-# ============ CREATE ============
+
+def _unset_existing_default(user_id: UUID, session: Session, exclude_wallet_id: UUID = None) -> None:
+    """Desmarca cualquier wallet default existente del usuario, salvo la
+    indicada en exclude_wallet_id (para no desmarcarse a si misma al editar)."""
+    query = select(Wallet).where(
+        Wallet.user_id == user_id,
+        Wallet.is_default == True,
+        Wallet.is_active == True,
+    )
+    if exclude_wallet_id is not None:
+        query = query.where(Wallet.id != exclude_wallet_id)
+
+    existing_default = session.exec(query).first()
+    if existing_default:
+        existing_default.is_default = False
+        session.add(existing_default)
+
+
 @router.post("/", response_model=WalletRead, status_code=status.HTTP_201_CREATED)
-@log_action(action="CREATE", entity="Wallet", level="INFO")
+@log_action(action=LogAction.CREATE, table="wallets")
 def create_wallet(
     wallet_in: WalletCreate,
     session: Session = Depends(get_session),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
-    # Si se pide is_default=True, primero desmarcar la anterior default del usuario
     if wallet_in.is_default:
-        existing_default = session.exec(
-            select(Wallet).where(
-                Wallet.user_id == current_user.id,
-                Wallet.is_default == True,
-                Wallet.is_active == True
-            )
-        ).first()
-        if existing_default:
-            existing_default.is_default = False
-            session.add(existing_default)
+        _unset_existing_default(current_user.id, session)
 
-    wallet_dict = wallet_in.model_dump()
     new_wallet = Wallet(
-        **wallet_dict,
         user_id=current_user.id,
-        is_active=True
+        name=wallet_in.name,
+        description=wallet_in.description,
+        is_default=wallet_in.is_default,
     )
     session.add(new_wallet)
     session.commit()
     session.refresh(new_wallet)
     return new_wallet
 
-# ============ LIST ============
+
 @router.get("/", response_model=List[WalletRead])
 def list_wallets(
     session: Session = Depends(get_session),
     current_user: User = Depends(get_current_user),
     skip: int = 0,
-    limit: int = 100
+    limit: int = 100,
 ):
+    """Lista los wallets custom del usuario. El wallet 'default' es
+    implicito y no vive como fila normal aqui: se consulta filtrando
+    transacciones directamente, sin pasar por esta tabla."""
     wallets = session.exec(
         select(Wallet)
         .where(Wallet.user_id == current_user.id, Wallet.is_active == True)
@@ -61,26 +72,26 @@ def list_wallets(
     ).all()
     return wallets
 
-# ============ GET ONE ============
+
 @router.get("/{wallet_id}", response_model=WalletRead)
 def get_wallet(
     wallet_id: UUID,
     session: Session = Depends(get_session),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     wallet = session.get(Wallet, wallet_id)
     if not wallet or not wallet.is_active or wallet.user_id != current_user.id:
         raise HTTPException(status_code=404, detail="Wallet not found")
     return wallet
 
-# ============ UPDATE (PATCH) ============
+
 @router.patch("/{wallet_id}", response_model=WalletRead)
-@log_action(action="UPDATE", entity="Wallet", level="INFO")
+@log_action(action=LogAction.UPDATE, table="wallets")
 def update_wallet(
     wallet_id: UUID,
     wallet_in: WalletUpdate,
     session: Session = Depends(get_session),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     wallet = session.get(Wallet, wallet_id)
     if not wallet or not wallet.is_active or wallet.user_id != current_user.id:
@@ -88,43 +99,36 @@ def update_wallet(
 
     update_data = wallet_in.model_dump(exclude_unset=True)
 
-    # Si se quiere marcar como default, desmarcar la anterior (excepto esta misma)
-    if update_data.get("is_default") == True:
-        existing_default = session.exec(
-            select(Wallet).where(
-                Wallet.user_id == current_user.id,
-                Wallet.is_default == True,
-                Wallet.is_active == True,
-                Wallet.id != wallet_id
-            )
-        ).first()
-        if existing_default:
-            existing_default.is_default = False
-            session.add(existing_default)
+    if update_data.get("is_default") is True:
+        _unset_existing_default(current_user.id, session, exclude_wallet_id=wallet_id)
 
     for key, value in update_data.items():
         setattr(wallet, key, value)
+
     wallet.updated_at = datetime.now()
     session.add(wallet)
     session.commit()
     session.refresh(wallet)
     return wallet
 
-# ============ SOFT DELETE ============
+
 @router.delete("/{wallet_id}", status_code=200)
-@log_action(action="SOFT_DELETE", entity="Wallet", level="WARNING")
+@log_action(action=LogAction.DELETE, level=LogLevel.WARNING, table="wallets")
 def deactivate_wallet(
     wallet_id: UUID,
     session: Session = Depends(get_session),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     wallet = session.get(Wallet, wallet_id)
     if not wallet or not wallet.is_active or wallet.user_id != current_user.id:
         raise HTTPException(status_code=404, detail="Wallet not found")
 
-    # No permitir desactivar la wallet si es la única wallet activa o si es la default?
-    # Podrías dejar que el usuario decida, pero se recomienda validar.
-    # Aquí solo lo desactivamos sin restricciones.
+    if wallet.is_default:
+        raise HTTPException(
+            status_code=400,
+            detail="Cannot deactivate the default wallet",
+        )
+
     wallet.is_active = False
     wallet.updated_at = datetime.now()
     session.add(wallet)

@@ -4,7 +4,7 @@ from enum import Enum
 from sqlmodel import SQLModel, Field, Column, Relationship
 from sqlalchemy import String
 from typing import Optional, TYPE_CHECKING
-
+
 
 if TYPE_CHECKING:
     from users import User

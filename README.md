@@ -1,9 +1,7 @@
 # Excel 2
----
 
 Aplicación web de finanzas personales multiusuario: cada usuario gestiona sus propios ingresos, gastos, wallets (billeteras) con asignación automática por reglas, y transacciones recurrentes.
 
----
 
 ## Qué hace la app
 
@@ -14,7 +12,6 @@ Aplicación web de finanzas personales multiusuario: cada usuario gestiona sus p
 - **Transacciones recurrentes**: suscripciones, sueldos, alquileres — cualquier cosa que se repita en el tiempo (diario, semanal, quincenal, mensual, anual), con la opción de que se generen solas o de requerir confirmación manual cada vez.
 - **Administración**: un rol de admin acotado (gestionado solo por línea de comandos, nunca desde la app) puede ver y moderar cuentas de usuario.
 
----
 
 
 ## Instalacion

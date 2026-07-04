@@ -10,32 +10,29 @@ RUN apt-get update && \
     apt-get install -y --no-install-recommends gcc build-essential && \
     rm -rf /var/lib/apt/lists/*
 
-COPY requirements.txt .
+COPY backend/requirements.txt .
 
 
-RUN python -m venv /opt/venv
-ENV PATH="/opt/venv/bin:$PATH"
+RUN python -m venv /opt/venv && \
+    /opt/venv/bin/pip install --upgrade pip && \
+    /opt/venv/bin/pip install --no-cache-dir -r requirements.txt
 
-
-RUN pip install --upgrade pip && \
-    pip install --no-cache-dir -r requirements.txt
-
+# RUN python -m venv /opt/venv \
+# 	pip install --upgrade pip && \
+#     pip install --no-cache-dir -r requirements.txt
 
 # Final
 FROM python:3.11-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1
+    PYTHONUNBUFFERED=1 \
+	PATH="/opt/venv/bin:$PATH"
 
-WORKDIR /app
-
+WORKDIR /app/backend
 
 COPY --from=builder /opt/venv /opt/venv
-ENV PATH="/opt/venv/bin:$PATH"
 
-
-COPY backend/ ./backend/
-WORKDIR /app/backend
+COPY backend/ .
 
 EXPOSE 8000
 
