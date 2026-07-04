@@ -20,7 +20,6 @@ Se recomienda usar un entorno virtual:
 ```bash
 python -m venv .venv
 
-
 source .venv/bin/activate
 # Windows (PowerShell)
 .venv\Scripts\Activate.ps1
@@ -33,6 +32,9 @@ Ejecuta:
 ```bash
 cd docker
 docker compose up --build
-```
-```
+
+En caso de haber una migracion nueva:
+
+docker exec -it nombre_contenedor bash
+alembic upgrade head
 ```
