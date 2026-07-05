@@ -1,4 +1,5 @@
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from app.db.db import init_db
 from app.routes import (
     auth,
@@ -14,6 +15,13 @@ from app.routes import (
 
 app = FastAPI(title="Finanzas API", version="1.0.0")
 
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000"],  # ver problema 2 para saber por qué es 3000
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 @app.on_event("startup")
 def on_startup():

@@ -1,0 +1,10 @@
+Landing.tsx
+Login.tsx
+Register.tsx
+Dashboard.tsx
+Income.tsx
+Expenses.tsx
+Recurring.tsx
+Wallets.tsx
+Settings.tsx
+            

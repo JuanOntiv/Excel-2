@@ -11,6 +11,7 @@ if TYPE_CHECKING:
     from transactions import Transaction
     from recurring_transactions import RecurringTransaction
     from wallet_rules import WalletRule
+    from user_category_preferences import UserCategoryPreference
 
 
 # To use with ENUM
@@ -30,6 +31,8 @@ class CategoryUpdate(SQLModel):
     name: Optional[str] = None
     type: Optional[CategoryType] = None
     is_active: Optional[bool] = None
+    is_hidden: Optional[bool] = None
+    color: Optional[bool] = None
     user_id: Optional[UUID] = None
 
 
@@ -39,6 +42,8 @@ class CategoryRead(SQLModel):
     name: str
     type: CategoryType
     is_active: bool
+    is_hidden: bool = False   # calculado, no es columna de esta tabla
+    color: Optional[str] = None  # calculado, no es columna de esta tabl
     created_at: datetime
     updated_at: datetime
 
@@ -64,6 +69,7 @@ class Category(SQLModel, table=True):
         nullable=False
     )
 
+
     is_active: bool = Field(
         default=True,
         nullable=False
@@ -84,3 +90,4 @@ class Category(SQLModel, table=True):
     transactions: list["Transaction"] = Relationship(back_populates="category")
     recurring_transactions: list["RecurringTransaction"] = Relationship(back_populates="category")
     wallet_rules: list["WalletRule"] = Relationship(back_populates="category")
+    user_preferences: list["UserCategoryPreference"] = Relationship(back_populates="category")

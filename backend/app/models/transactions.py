@@ -22,7 +22,7 @@ class TransactionCreate(SQLModel):
     amount: float
     date: datetime
     type: TransactionType
-    categoty_id: UUID
+    category_id: UUID
     wallet_id: Optional[UUID] = None  # asignacion manual opcional a un wallet custom
 
 

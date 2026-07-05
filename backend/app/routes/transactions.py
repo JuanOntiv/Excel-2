@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlmodel import Session, select
 
 from app.db.db import get_session
-from app.models.transactions import Transaction, TransactionCreate, TransactionUpdate, TransactionRead
+from app.models.transactions import Transaction, TransactionCreate, TransactionUpdate, TransactionRead, TransactionType
 from app.models.users import User
 from app.models.categories import Category, CategoryType
 from app.models.wallets import Wallet
@@ -77,6 +77,7 @@ def list_transactions(
     current_user: User = Depends(get_current_user),
     skip: int = 0,
     limit: int = 100,
+    type: Optional[TransactionType] = None,
     category_id: Optional[UUID] = None,
     wallet_id: Optional[UUID] = None,
     start_date: Optional[date] = None,
@@ -105,6 +106,9 @@ def list_transactions(
             Transaction.is_active == True,
         )
 
+
+    if type:
+   		query = query.where(Transaction.type == type)
     if category_id:
         query = query.where(Transaction.category_id == category_id)
     if start_date:
@@ -125,6 +129,35 @@ def get_transaction(
     if not trx or not trx.is_active or trx.user_id != current_user.id:
         raise HTTPException(404, "Transaction not found")
     return trx
+
+
+@router.get("/summary")
+def get_transactions_summary(
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+    start_date: Optional[date] = None,
+    end_date: Optional[date] = None,
+):
+    query = select(Transaction).where(
+        Transaction.user_id == current_user.id,
+        Transaction.is_active == True,
+    )
+    if start_date:
+        query = query.where(Transaction.date >= start_date)
+    if end_date:
+        query = query.where(Transaction.date <= end_date)
+
+    results = session.exec(query).all()
+
+    total_income = sum(t.amount for t in results if t.type == TransactionType.INCOME)
+    total_expenses = sum(t.amount for t in results if t.type == TransactionType.EXPENSE)
+
+    return {
+        "total_income": float(total_income),
+        "total_expenses": float(total_expenses),
+        "balance": float(total_income - total_expenses),
+        "count": len(results),
+    }
 
 
 @router.patch("/{transaction_id}", response_model=TransactionRead)
