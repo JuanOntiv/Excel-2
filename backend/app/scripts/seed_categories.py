@@ -7,13 +7,16 @@ DEFAULT_CATEGORIES = [
     ("Freelance", CategoryType.INCOME),
     ("Inversiones", CategoryType.INCOME),
     ("Otro ingreso", CategoryType.INCOME),
+
     ("Comida", CategoryType.EXPENSE),
     ("Transporte", CategoryType.EXPENSE),
     ("Vivienda", CategoryType.EXPENSE),
     ("Servicios", CategoryType.EXPENSE),
     ("Salud", CategoryType.EXPENSE),
     ("Entretenimiento", CategoryType.EXPENSE),
+    ("Viajes", CategoryType.EXPENSE),
     ("Educación", CategoryType.EXPENSE),
+    ("Vestimenta", CategoryType.EXPENSE),
     ("Otro gasto", CategoryType.EXPENSE),
 ]
 

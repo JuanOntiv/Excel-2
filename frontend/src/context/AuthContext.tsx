@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import { apiClient } from "../api/client";
+import { executePending } from "../api/recurring";
 import { loginRequest, logoutRequest } from "../api/auth";
 import type { User } from "../types";
 
@@ -8,6 +9,7 @@ interface AuthContextType {
   isLoading: boolean;
   login: (mail: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
+  refreshUser: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -41,6 +43,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.setItem("access_token", tokens.access_token);
     localStorage.setItem("refresh_token", tokens.refresh_token);
     await fetchCurrentUser();
+
+    executePending().catch(() => {});
   }
 
   async function logout() {
@@ -57,7 +61,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, isLoading, login, logout }}>
+    <AuthContext.Provider value={{ user, isLoading, login, logout,  refreshUser: fetchCurrentUser }}>
       {children}
     </AuthContext.Provider>
   );

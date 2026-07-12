@@ -3,6 +3,7 @@ from uuid import UUID
 from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi._compat.main import _model_dump
 from sqlmodel import Session, select
 
 from app.db.db import get_session
@@ -45,7 +46,7 @@ def create_category(
     session.add(db_category)
     session.commit()
     session.refresh(db_category)
-    return db_category
+    return CategoryRead(**db_category.model_dump(), is_hidden=False, color=None)
 
 
 @router.get("/", response_model=List[CategoryRead])

@@ -7,7 +7,7 @@ import {
   deleteCategory,
   updateCategoryPreference,
 } from "../api/categories";
-import { CategoryFormModal } from "../components/categories/CategoryFormModal";
+import { CategoryFormModal } from "../components/transactions/CategoryFormModal";
 import type { Category, CategoryType } from "../types";
 
 const typeLabels: Record<CategoryType, string> = {

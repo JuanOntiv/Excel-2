@@ -1,5 +1,9 @@
 export type TransactionType = "income" | "expense";
 export type CategoryType = "income" | "expense" | "both";
+export type WalletRuleType = "Category" | "TransactionType" | "Keyword" | "DateRange" | "AmountRange";
+export type RecurringFrequency = "Daily" | "Weekly" | "Biweekly" | "Monthly" | "Yearly";
+export type RecurringStatus = "active" | "paused" | "cancelled";
+
 
 export interface User {
   id: string; // UUID
@@ -38,6 +42,24 @@ export interface Transaction {
   updated_at: string;
 }
 
+export interface RecurringTransaction {
+  id: string;
+  user_id: string;
+  name: string;
+  description: string | null;
+  amount: number;
+  type: TransactionType;
+  frequency: RecurringFrequency;
+  start_date: string;
+  next_execution: string;
+  last_executed: string | null;
+  status: RecurringStatus;
+  auto_execute: boolean;
+  category_id: string;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
 
 export interface Category {
   id: string;
@@ -58,6 +80,23 @@ export interface Wallet {
   name: string;
   description: string | null;
   is_default: boolean;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface WalletRule {
+  id: string;
+  user_id: string;
+  wallet_id: string;
+  rule_type: WalletRuleType;
+  category_id: string | null;
+  transaction_type: TransactionType | null;
+  keyword: string | null;
+  date_from: string | null;
+  date_to: string | null;
+  amount_from: number | null;
+  amount_to: number | null;
   is_active: boolean;
   created_at: string;
   updated_at: string;
