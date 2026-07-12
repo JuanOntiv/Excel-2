@@ -7,11 +7,11 @@ from typing import Optional, TYPE_CHECKING
 
 
 if TYPE_CHECKING:
-    from users import User
-    from transactions import Transaction
-    from recurring_transactions import RecurringTransaction
-    from wallet_rules import WalletRule
-    from user_category_preferences import UserCategoryPreference
+    from app.models.users import User
+    from app.models.transactions import Transaction
+    from app.models.recurring_transactions import RecurringTransaction
+    from app.models.wallet_rules import WalletRule
+    from app.models.user_category_preferences import UserCategoryPreference
 
 
 # To use with ENUM
@@ -22,7 +22,9 @@ class CategoryType(str, Enum):
 
 
 class CategoryCreate(SQLModel):
-	user_id: UUID
+	# El user_id lo asigna el backend con current_user.id; se acepta opcional
+	# solo por compatibilidad y se ignora al crear.
+	user_id: Optional[UUID] = None
 	name: str
 	type: CategoryType
 

@@ -6,9 +6,9 @@ from typing import Optional, TYPE_CHECKING
 from enum import Enum
 
 if TYPE_CHECKING:
-    from users import User
-    from categories import Category
-    from transactions_wallets import TransactionWallet
+    from app.models.users import User
+    from app.models.categories import Category
+    from app.models.transactions_wallets import TransactionWallet
 
 
 class TransactionType(str, Enum):

@@ -1,4 +1,4 @@
-import { NavLink } from "react-router-dom";
+import { NavLink, useNavigate } from "react-router-dom";
 import {
   LayoutDashboard,
   ArrowDownCircle,
@@ -9,6 +9,7 @@ import {
   Moon,
   Sun,
   Globe,
+  LogOut,
   ChevronLeft,
   ChevronRight,
   Tag,
@@ -33,7 +34,13 @@ const navItems = [
 
 export function Sidebar({ collapsed, onToggle }: SidebarProps) {
   const { theme, toggleTheme } = useTheme();
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
+
+  async function handleLogout() {
+    await logout();
+    navigate("/login");
+  }
 
   return (
     <aside
@@ -81,6 +88,13 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
         <button className="flex items-center gap-3 px-2 py-2 rounded-lg text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800">
           <Globe size={18} />
           {!collapsed && <span>Idioma</span>}
+        </button>
+        <button
+          onClick={handleLogout}
+          className="flex items-center gap-3 px-2 py-2 rounded-lg text-sm text-negative hover:bg-negative/10"
+        >
+          <LogOut size={18} />
+          {!collapsed && <span>Cerrar sesión</span>}
         </button>
       </div>
 

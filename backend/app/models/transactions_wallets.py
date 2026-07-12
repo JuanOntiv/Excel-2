@@ -5,9 +5,9 @@ from typing import Optional, TYPE_CHECKING
 from sqlmodel import SQLModel, Field, Relationship
 
 if TYPE_CHECKING:
-    from transactions import Transaction
-    from wallets import Wallet
-    from wallet_rules import WalletRule
+    from app.models.transactions import Transaction
+    from app.models.wallets import Wallet
+    from app.models.wallet_rules import WalletRule
 
 
 class AssignmentType(str, Enum):

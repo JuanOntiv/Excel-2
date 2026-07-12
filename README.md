@@ -1,41 +1,70 @@
-# Excel 2
+# Finanzas — Personal Finance Manager
 
-Aplicación web de finanzas personales multiusuario: cada usuario gestiona sus propios ingresos, gastos, wallets (billeteras) con asignación automática por reglas, y transacciones recurrentes.
-
-
-## Qué hace la app
-
-- **Multiusuario**: cada persona tiene su propia cuenta, con sus propios datos completamente aislados del resto.
-- **Transacciones**: registro unificado de ingresos y gastos, categorizados.
-- **Categorías**: algunas son globales (disponibles para todos), otras privadas (creadas por cada usuario).
-- **Wallets**: además de un wallet "default" que siempre contiene absolutamente todo, el usuario puede crear wallets custom (ej. "Viajes 2026", "Ahorro emergencia") y definir **reglas** que asignan transacciones a esos wallets automáticamente — por categoría, tipo de transacción, palabra clave, rango de fechas, o rango de montos. Una transacción puede vivir en varios wallets a la vez.
-- **Transacciones recurrentes**: suscripciones, sueldos, alquileres — cualquier cosa que se repita en el tiempo (diario, semanal, quincenal, mensual, anual), con la opción de que se generen solas o de requerir confirmación manual cada vez.
-- **Administración**: un rol de admin acotado (gestionado solo por línea de comandos, nunca desde la app) puede ver y moderar cuentas de usuario.
+A full-stack personal finance management application. Track income, expenses, recurring transactions, and organize your money into custom wallets with automatic rule-based assignment.
 
 
+## Features
+ 
+- **Authentication** — JWT-based auth with access + refresh tokens, secure password hashing
+- **Dashboard** — Monthly overview of income, expenses, and balance at a glance
+- **Income & Expenses** — Full CRUD with monthly trend charts, category breakdown (pie chart), paginated history, and highest/lowest transaction highlights
+- **Categories** — Global (shared) and personal categories, with per-user preferences to hide categories or assign custom colors without affecting other users
+- **Recurring Transactions** — Automate regular income/expenses (daily, weekly, biweekly, monthly, yearly) with optional auto-execution or manual confirmation
+- **Wallets** — Organize transactions into custom groupings, either manually or automatically via rules (by category, transaction type, keyword, date range, or amount range)
+- **Dark mode** — Full light/dark theme support
+- **Responsive design** — Collapsible sidebar on desktop, bottom navigation on mobile
 
-## Instalacion
-Se recomienda usar un entorno virtual:
+# Tech Stack
+ 
+**Backend**
+- FastAPI + SQLModel + PostgreSQL
+- Alembic for migrations
+- Docker Compose for local development
+- JWT authentication (access + refresh, with refresh token rotation and SHA-256 hashing)
+- bcrypt for password hashing
+**Frontend**
+- React + TypeScript + Vite
+- Tailwind CSS v4
+- Zustand (transaction state) + Context API (auth, theme)
+- Recharts for data visualization
+- React Router + Axios (with automatic token refresh)
 
+
+## Getting Started
+ 
+### Prerequisites
+- Docker and Docker Compose
+### Setup
+ 
+1. Clone the repository:
 ```bash
-python -m venv .venv
-
-source .venv/bin/activate
-# Windows (PowerShell)
-.venv\Scripts\Activate.ps1
+   git clone <repo-url>
+   cd <repo-name>
 ```
-
-
-## Iniciar
-Ejecuta:
-
+ 
+2. Create your `.env` file at the project root (see `.env.example` for required variables: database credentials, JWT secret, token expiration settings).
+3. Start all services:
 ```bash
-cd docker
-docker compose up --build
+   docker compose -f docker/docker-compose.yml up --build
 ```
-
-En caso de haber una migracion nueva:
+ 
+4. Seed the global categories (recommended, so new accounts have categories to work with right away):
 ```bash
-docker exec -it nombre_contenedor bash
-alembic upgrade head
+   docker compose exec backend python -m app.scripts.seed_categories
 ```
+ 
+5. Open the app:
+   - Frontend: [http://localhost:3000](http://localhost:3000)
+   - Backend API docs (Swagger): [http://localhost:8000/docs](http://localhost:8000/docs)
+## Project Structure
+ 
+```
+├── backend/          # FastAPI application (models, routes, services, migrations)
+├── frontend/          # React + TypeScript application
+└── docker/            # Docker Compose and Dockerfiles
+```
+ 
+## Running Tests
+
+ 
+## License

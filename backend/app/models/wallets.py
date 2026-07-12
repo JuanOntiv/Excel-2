@@ -5,9 +5,9 @@ from sqlalchemy import String
 from typing import Optional, TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from users import User
-    from wallet_rules import WalletRule
-    from transactions_wallets import TransactionWallet
+    from app.models.users import User
+    from app.models.wallet_rules import WalletRule
+    from app.models.transactions_wallets import TransactionWallet
 
 
 class WalletCreate(SQLModel):

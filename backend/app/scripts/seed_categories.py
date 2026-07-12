@@ -1,6 +1,9 @@
 from sqlmodel import Session, select
 from app.db.db import engine
-from app.models.categories import Category, CategoryType
+# Importar el paquete completo registra todos los modelos en el mapper de
+# SQLModel; sin esto, resolver las relaciones de Category (-> User, etc.) falla.
+import app.models  # noqa: F401
+from app.models import Category, CategoryType
 
 DEFAULT_CATEGORIES = [
     ("Salario", CategoryType.INCOME),

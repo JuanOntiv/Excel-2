@@ -24,6 +24,10 @@ export function TransactionTable({ transactions, categories, onEdit, onDelete }:
     return categories.find((c) => c.id === id)?.name ?? "—";
   }
 
+  function categoryColor(id: string) {
+    return categories.find((c) => c.id === id)?.color ?? null;
+  }
+
   return (
     <div className="rounded-xl border border-line-light dark:border-line-dark bg-surface-elevated-light dark:bg-surface-elevated-dark overflow-hidden">
       <table className="w-full text-sm">
@@ -47,7 +51,17 @@ export function TransactionTable({ transactions, categories, onEdit, onDelete }:
           {pageItems.map((t) => (
             <tr key={t.id} className="border-b border-line-light dark:border-line-dark last:border-0">
               <td className="px-4 py-3">{t.name}</td>
-              <td className="px-4 py-3 text-ink-muted-light dark:text-ink-muted-dark">{categoryName(t.category_id)}</td>
+              <td className="px-4 py-3 text-ink-muted-light dark:text-ink-muted-dark">
+                <span className="inline-flex items-center gap-2">
+                  {categoryColor(t.category_id) && (
+                    <span
+                      className="w-2 h-2 rounded-full shrink-0"
+                      style={{ backgroundColor: categoryColor(t.category_id)! }}
+                    />
+                  )}
+                  {categoryName(t.category_id)}
+                </span>
+              </td>
               <td className="px-4 py-3 text-ink-muted-light dark:text-ink-muted-dark">{new Date(t.date).toLocaleDateString("es-MX")}</td>
               <td className="px-4 py-3 text-right font-medium">{formatCurrency(t.amount)}</td>
               <td className="px-4 py-3">

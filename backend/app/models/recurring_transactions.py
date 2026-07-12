@@ -6,8 +6,8 @@ from sqlmodel import SQLModel, Field, Column, Relationship
 from sqlalchemy import String, DECIMAL, Date
 
 if TYPE_CHECKING:
-    from users import User
-    from categories import Category
+    from app.models.users import User
+    from app.models.categories import Category
 
 
 class RecurringTransactionType(str, Enum):

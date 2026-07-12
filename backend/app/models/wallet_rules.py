@@ -6,10 +6,10 @@ from sqlmodel import SQLModel, Field, Column, Relationship
 from sqlalchemy import String, DECIMAL, Date
 
 if TYPE_CHECKING:
-    from users import User
-    from wallets import Wallet
-    from categories import Category
-    from transactions_wallets import TransactionWallet
+    from app.models.users import User
+    from app.models.wallets import Wallet
+    from app.models.categories import Category
+    from app.models.transactions_wallets import TransactionWallet
 
 
 class WalletRuleType(str, Enum):

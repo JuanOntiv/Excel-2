@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
-import { apiClient } from "../api/client";
+import { apiClient, resetSessionExpired } from "../api/client";
 import { executePending } from "../api/recurring";
 import { loginRequest, logoutRequest } from "../api/auth";
 import type { User } from "../types";
@@ -42,6 +42,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const tokens = await loginRequest(mail, password);
     localStorage.setItem("access_token", tokens.access_token);
     localStorage.setItem("refresh_token", tokens.refresh_token);
+    // Reactiva el interceptor si una sesion previa habia expirado sin recargar.
+    resetSessionExpired();
     await fetchCurrentUser();
 
     executePending().catch(() => {});

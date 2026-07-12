@@ -1,7 +1,7 @@
 import { useState, FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import { updateProfile, deactivateAccount } from "../api/users";
+import { updateProfile, deactivateAccount, changePassword } from "../api/users";
 
 export default function Settings() {
   const { user, refreshUser, logout } = useAuth();
@@ -13,6 +13,7 @@ export default function Settings() {
   const [profileSuccess, setProfileSuccess] = useState(false);
   const [isSavingProfile, setIsSavingProfile] = useState(false);
 
+  const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [passwordError, setPasswordError] = useState<string | null>(null);
@@ -57,12 +58,17 @@ export default function Settings() {
 
     setIsSavingPassword(true);
     try {
-      await updateProfile({ password: newPassword });
+      await changePassword({ current_password: currentPassword, new_password: newPassword });
+      setCurrentPassword("");
       setNewPassword("");
       setConfirmPassword("");
       setPasswordSuccess(true);
-    } catch {
-      setPasswordError("No se pudo actualizar la contraseña.");
+    } catch (err: any) {
+      if (err?.response?.status === 400) {
+        setPasswordError("La contraseña actual es incorrecta.");
+      } else {
+        setPasswordError("No se pudo actualizar la contraseña.");
+      }
     } finally {
       setIsSavingPassword(false);
     }
@@ -128,6 +134,16 @@ export default function Settings() {
       <section className="rounded-xl border border-line-light dark:border-line-dark bg-surface-elevated-light dark:bg-surface-elevated-dark p-5 mb-6">
         <h2 className="text-lg font-medium text-ink-light dark:text-ink-dark mb-4">Cambiar contraseña</h2>
         <form onSubmit={handlePasswordSubmit} className="flex flex-col gap-4">
+          <div>
+            <label className="block text-sm font-medium mb-1 text-ink-light dark:text-ink-dark">Contraseña actual</label>
+            <input
+              type="password"
+              value={currentPassword}
+              onChange={(e) => setCurrentPassword(e.target.value)}
+              required
+              className="w-full px-3 py-2 rounded-lg border border-line-light dark:border-line-dark bg-transparent focus:outline-none focus:ring-2 focus:ring-accent"
+            />
+          </div>
           <div>
             <label className="block text-sm font-medium mb-1 text-ink-light dark:text-ink-dark">Nueva contraseña</label>
             <input

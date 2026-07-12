@@ -5,17 +5,9 @@ from sqlalchemy import engine_from_config, pool
 from alembic import context
 from sqlmodel import SQLModel
 
-from app.models import(
-	categories,
-	logs,
-	recurring_transactions,
-	refresh_tokens,
-	transactions,
-	transactions_wallets,
-	users,
-	wallet_rules,
-	wallets
-)
+# Importar el paquete de modelos registra todas las tablas en
+# SQLModel.metadata, necesario para el autogenerate de Alembic.
+import app.models  # noqa: F401
 
 config = context.config
 

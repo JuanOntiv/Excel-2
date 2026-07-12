@@ -4,7 +4,7 @@ from typing import Optional, TYPE_CHECKING
 from sqlmodel import SQLModel, Field, Relationship
 
 if TYPE_CHECKING:
-    from users import User
+    from app.models.users import User
 
 
 class RefreshTokenRead(SQLModel):

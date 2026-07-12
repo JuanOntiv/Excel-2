@@ -14,6 +14,7 @@ from app.models.logs import LogAction, LogLevel
 from app.auth.dependencies import get_current_user
 from app.utils.logs_decorator import log_action
 from app.services.wallet_assignment import assign_wallets_for_transaction
+from app.services.wallets import get_default_wallet
 
 router = APIRouter(prefix="/transactions", tags=["Transactions"])
 
@@ -138,6 +139,10 @@ def get_transactions_summary(
     start_date: Optional[date] = None,
     end_date: Optional[date] = None,
 ):
+    """Resumen del dashboard: corresponde a la wallet default del usuario,
+    que agrupa todos sus movimientos. El balance se calcula sumando las
+    transacciones (income - expenses); la wallet default aporta la
+    identidad/metadata estable que el frontend referencia."""
     query = select(Transaction).where(
         Transaction.user_id == current_user.id,
         Transaction.is_active == True,
@@ -152,7 +157,11 @@ def get_transactions_summary(
     total_income = sum(t.amount for t in results if t.type == TransactionType.INCOME)
     total_expenses = sum(t.amount for t in results if t.type == TransactionType.EXPENSE)
 
+    default_wallet = get_default_wallet(current_user.id, session)
+
     return {
+        "wallet_id": str(default_wallet.id) if default_wallet else None,
+        "wallet_name": default_wallet.name if default_wallet else None,
         "total_income": float(total_income),
         "total_expenses": float(total_expenses),
         "balance": float(total_income - total_expenses),

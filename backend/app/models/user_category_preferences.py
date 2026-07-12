@@ -5,8 +5,8 @@ from sqlmodel import SQLModel, Field, Relationship, UniqueConstraint
 from sqlalchemy import String
 
 if TYPE_CHECKING:
-    from users import User
-    from categories import Category
+    from app.models.users import User
+    from app.models.categories import Category
 
 
 class UserCategoryPreferenceUpdate(SQLModel):

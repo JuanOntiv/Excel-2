@@ -6,13 +6,13 @@ from typing import Optional, TYPE_CHECKING
 
 
 if TYPE_CHECKING:
-    from categories import Category
-    from transactions import Transaction
-    from wallets import Wallet
-    from wallet_rules import WalletRule
-    from recurring_transactions import RecurringTransaction
-    from logs import Log
-    from refresh_tokens import RefreshToken
+    from app.models.categories import Category
+    from app.models.transactions import Transaction
+    from app.models.wallets import Wallet
+    from app.models.wallet_rules import WalletRule
+    from app.models.recurring_transactions import RecurringTransaction
+    from app.models.logs import Log
+    from app.models.refresh_tokens import RefreshToken
 
 
 class UserCreate(SQLModel):

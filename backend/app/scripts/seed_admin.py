@@ -19,7 +19,9 @@ import getpass
 from sqlmodel import Session, select
 
 from app.db.db import engine, init_db
-from app.models.users import User
+# Registra todos los modelos en el mapper de SQLModel antes de instanciar User.
+import app.models  # noqa: F401
+from app.models import User
 from app.utils.password import hash_password
 
 

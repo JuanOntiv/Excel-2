@@ -61,9 +61,9 @@ def list_wallets(
     skip: int = 0,
     limit: int = 100,
 ):
-    """Lista los wallets custom del usuario. El wallet 'default' es
-    implicito y no vive como fila normal aqui: se consulta filtrando
-    transacciones directamente, sin pasar por esta tabla."""
+    """Lista los wallets del usuario, incluyendo el wallet 'default'
+    (is_default=True), que se materializa como fila real al registrarse y
+    agrupa todos los movimientos."""
     wallets = session.exec(
         select(Wallet)
         .where(Wallet.user_id == current_user.id, Wallet.is_active == True)

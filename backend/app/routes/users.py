@@ -3,17 +3,24 @@ from uuid import UUID
 from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from pydantic import BaseModel
 from sqlmodel import Session, select
 
 from app.db.db import get_session
 from app.models.users import User, UserCreate, UserUpdate, UserRead
 from app.models.logs import LogAction, LogLevel
-from app.utils.password import hash_password
+from app.utils.password import hash_password, verify_password
 from app.auth.dependencies import get_current_user
 from app.auth.dependencies_admin import get_current_admin
 from app.utils.logs_decorator import log_action
+from app.services.wallets import create_default_wallet
 
 router = APIRouter(prefix="/users", tags=["Users"])
+
+
+class ChangePasswordRequest(BaseModel):
+    current_password: str
+    new_password: str
 
 
 @router.post("/register", response_model=UserRead, status_code=status.HTTP_201_CREATED)
@@ -37,6 +44,10 @@ def register_user(
     session.add(db_user)
     session.commit()
     session.refresh(db_user)
+
+    # Toda cuenta arranca con una wallet default ("todos los movimientos").
+    create_default_wallet(db_user.id, session)
+
     return db_user
 
 
@@ -58,8 +69,9 @@ def update_my_profile(
 ):
     update_data = user_data.model_dump(exclude_unset=True)
 
-    if "password" in update_data and update_data["password"]:
-        current_user.password_hash = hash_password(update_data.pop("password"))
+    # El password NO se cambia por aca: requiere verificar el actual, para
+    # eso esta el endpoint dedicado POST /users/me/change-password.
+    update_data.pop("password", None)
 
     # is_active no se puede auto-desactivar via update; para eso esta
     # el endpoint DELETE (soft delete) explicito.
@@ -73,6 +85,34 @@ def update_my_profile(
     session.commit()
     session.refresh(current_user)
     return current_user
+
+
+@router.post("/me/change-password", status_code=status.HTTP_200_OK)
+@log_action(action=LogAction.UPDATE, table="users")
+def change_my_password(
+    body: ChangePasswordRequest,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+):
+    """Cambia el password del usuario autenticado. Exige el password actual
+    y verifica que coincida antes de aplicar el nuevo."""
+    if not verify_password(body.current_password, current_user.password):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Current password is incorrect",
+        )
+
+    if not body.new_password:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="New password cannot be empty",
+        )
+
+    current_user.password = hash_password(body.new_password)
+    current_user.updated_at = datetime.now()
+    session.add(current_user)
+    session.commit()
+    return {"message": "Password updated successfully"}
 
 
 @router.delete("/me", status_code=status.HTTP_200_OK)

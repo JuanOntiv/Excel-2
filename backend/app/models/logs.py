@@ -6,7 +6,7 @@ from sqlmodel import SQLModel, Field, Column, Relationship
 from sqlalchemy import String
 
 if TYPE_CHECKING:
-    from users import User
+    from app.models.users import User
 
 
 class LogAction(str, Enum):

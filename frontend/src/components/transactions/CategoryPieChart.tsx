@@ -6,7 +6,8 @@ interface Props {
   categories: Category[];
 }
 
-const COLORS = ["#0f766e", "#b45309", "#7c3aed", "#be123c", "#0369a1", "#4d7c0f", "#a16207", "#9333ea"];
+// Fallback para categorías sin color asignado (ver boton de color en /categories).
+const FALLBACK_COLORS = ["#0f766e", "#b45309", "#7c3aed", "#be123c", "#0369a1", "#4d7c0f", "#a16207", "#9333ea"];
 
 export function CategoryPieChart({ transactions, categories }: Props) {
   const totals = new Map<string, number>();
@@ -14,10 +15,14 @@ export function CategoryPieChart({ transactions, categories }: Props) {
     totals.set(t.category_id, (totals.get(t.category_id) ?? 0) + t.amount);
   });
 
-  const data = Array.from(totals, ([categoryId, total]) => ({
-    name: categories.find((c) => c.id === categoryId)?.name ?? "Sin categoría",
-    value: total,
-  }));
+  const data = Array.from(totals, ([categoryId, total], i) => {
+    const category = categories.find((c) => c.id === categoryId);
+    return {
+      name: category?.name ?? "Sin categoría",
+      value: total,
+      color: category?.color ?? FALLBACK_COLORS[i % FALLBACK_COLORS.length],
+    };
+  });
 
   if (data.length === 0) {
     return (
@@ -33,8 +38,8 @@ export function CategoryPieChart({ transactions, categories }: Props) {
       <ResponsiveContainer width="100%" height={240}>
         <PieChart>
           <Pie data={data} dataKey="value" nameKey="name" innerRadius={50} outerRadius={80} paddingAngle={2}>
-            {data.map((_, i) => (
-              <Cell key={i} fill={COLORS[i % COLORS.length]} />
+            {data.map((entry, i) => (
+              <Cell key={i} fill={entry.color} />
             ))}
           </Pie>
           <Tooltip />
