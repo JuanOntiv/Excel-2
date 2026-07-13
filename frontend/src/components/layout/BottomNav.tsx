@@ -13,8 +13,8 @@ const navItems = [
   { to: "/income", icon: ArrowUpCircle, label: "Ingresos" },
   { to: "/expenses", icon: ArrowDownCircle, label: "Egresos" },
   { to: "/recurring", icon: Repeat, label: "Recurr." },
-  { to: "/wallets", icon: Wallet, label: "Carteras" },
   { to: "/categories", icon: Tag, label: "Categorías" },
+  { to: "/wallets", icon: Wallet, label: "Carteras" },
 ];
 
 

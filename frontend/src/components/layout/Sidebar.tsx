@@ -27,9 +27,9 @@ const navItems = [
   { to: "/income", icon: ArrowUpCircle, label: "Ingresos" },
   { to: "/expenses", icon: ArrowDownCircle, label: "Egresos" },
   { to: "/recurring", icon: Repeat, label: "Recurrentes" },
+  { to: "/categories", icon: Tag, label: "Categorías" },
   { to: "/wallets", icon: Wallet, label: "Carteras" },
   { to: "/settings", icon: Settings, label: "Configuración" },
-  { to: "/categories", icon: Tag, label: "Categorías" },
 ];
 
 export function Sidebar({ collapsed, onToggle }: SidebarProps) {

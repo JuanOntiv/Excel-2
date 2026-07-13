@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import { Plus, Pencil, Trash2, Star, Settings2 } from "lucide-react";
 import { listWallets, createWallet, updateWallet, deleteWallet } from "../api/wallets";
 import { WalletFormModal } from "../components/wallets/WalletFormModal";
@@ -6,6 +7,7 @@ import { WalletRulesPanel } from "../components/wallets/WalletRulesPanel";
 import type { Wallet } from "../types";
 
 export default function Wallets() {
+  const navigate = useNavigate();
   const [wallets, setWallets] = useState<Wallet[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
@@ -36,7 +38,7 @@ export default function Wallets() {
     setModalOpen(true);
   }
 
-  async function handleSubmit(payload: { name: string; description?: string; is_default: boolean }) {
+  async function handleSubmit(payload: { name: string; description?: string }) {
     if (editing) {
       await updateWallet(editing.id, payload);
     } else {
@@ -46,10 +48,6 @@ export default function Wallets() {
   }
 
   async function handleDelete(w: Wallet) {
-    if (w.is_default) {
-      alert("No se puede eliminar la cartera predeterminada.");
-      return;
-    }
     if (!confirm(`¿Eliminar "${w.name}"?`)) return;
     await deleteWallet(w.id);
     if (expandedWalletId === w.id) setExpandedWalletId(null);
@@ -73,39 +71,50 @@ export default function Wallets() {
       </div>
 
       <p className="text-sm text-ink-muted-light dark:text-ink-muted-dark mb-4">
-        Todas tus transacciones viven en la cartera principal por defecto. Las carteras personalizadas agrupan transacciones específicas, manual o automáticamente vía reglas.
+        Todas tus transacciones viven en la cartera principal por defecto. Las carteras personalizadas agrupan transacciones específicas, manual o automáticamente vía reglas. Toca una cartera para ver sus movimientos, balance y analíticas.
       </p>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {wallets.map((w) => (
-          <div key={w.id} className="rounded-xl border border-line-light dark:border-line-dark bg-surface-elevated-light dark:bg-surface-elevated-dark p-5">
+          <div
+            key={w.id}
+            onClick={() => navigate(`/wallets/${w.id}`)}
+            className="rounded-xl border border-line-light dark:border-line-dark bg-surface-elevated-light dark:bg-surface-elevated-dark p-5 cursor-pointer hover:border-accent transition-colors"
+          >
             <div className="flex items-start justify-between mb-2">
               <h3 className="font-medium text-ink-light dark:text-ink-dark flex items-center gap-1">
                 {w.name}
                 {w.is_default && <Star size={14} className="text-accent fill-accent" />}
               </h3>
-              <div className="flex gap-2">
+              <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
                 <button onClick={() => openEdit(w)} className="text-ink-muted-light dark:text-ink-muted-dark hover:text-accent">
                   <Pencil size={16} />
                 </button>
-                <button onClick={() => handleDelete(w)} className="text-ink-muted-light dark:text-ink-muted-dark hover:text-negative">
-                  <Trash2 size={16} />
-                </button>
+                {!w.is_default && (
+                  <button onClick={() => handleDelete(w)} className="text-ink-muted-light dark:text-ink-muted-dark hover:text-negative">
+                    <Trash2 size={16} />
+                  </button>
+                )}
               </div>
             </div>
             {w.description && (
               <p className="text-sm text-ink-muted-light dark:text-ink-muted-dark mb-3">{w.description}</p>
             )}
-            <button
-              onClick={() => toggleRules(w)}
-              className="flex items-center gap-1 text-sm text-accent hover:opacity-80"
-            >
-              <Settings2 size={14} />
-              {expandedWalletId === w.id ? "Ocultar reglas" : "Gestionar reglas"}
-            </button>
 
-            {expandedWalletId === w.id && (
-              <WalletRulesPanel wallet={w} onClose={() => setExpandedWalletId(null)} />
+            {!w.is_default && (
+              <div onClick={(e) => e.stopPropagation()}>
+                <button
+                  onClick={() => toggleRules(w)}
+                  className="flex items-center gap-1 text-sm text-accent hover:opacity-80"
+                >
+                  <Settings2 size={14} />
+                  {expandedWalletId === w.id ? "Ocultar reglas" : "Gestionar reglas"}
+                </button>
+
+                {expandedWalletId === w.id && (
+                  <WalletRulesPanel wallet={w} onClose={() => setExpandedWalletId(null)} />
+                )}
+              </div>
             )}
           </div>
         ))}

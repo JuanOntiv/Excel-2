@@ -6,14 +6,15 @@ import type { Transaction, Category } from "../../types";
 interface Props {
   transactions: Transaction[];
   categories: Category[];
-  onEdit: (t: Transaction) => void;
-  onDelete: (t: Transaction) => void;
+  onEdit?: (t: Transaction) => void;
+  onDelete?: (t: Transaction) => void;
 }
 
 const PAGE_SIZE = 8;
 
 export function TransactionTable({ transactions, categories, onEdit, onDelete }: Props) {
   const [page, setPage] = useState(0);
+  const showActions = Boolean(onEdit || onDelete);
 
   const sorted = [...transactions].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
   const totalPages = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE));
@@ -37,13 +38,13 @@ export function TransactionTable({ transactions, categories, onEdit, onDelete }:
             <th className="px-4 py-3 font-medium">Categoría</th>
             <th className="px-4 py-3 font-medium">Fecha</th>
             <th className="px-4 py-3 font-medium text-right">Monto</th>
-            <th className="px-4 py-3 font-medium text-right">Acciones</th>
+            {showActions && <th className="px-4 py-3 font-medium text-right">Acciones</th>}
           </tr>
         </thead>
         <tbody>
           {pageItems.length === 0 && (
             <tr>
-              <td colSpan={5} className="px-4 py-8 text-center text-ink-muted-light dark:text-ink-muted-dark">
+              <td colSpan={showActions ? 5 : 4} className="px-4 py-8 text-center text-ink-muted-light dark:text-ink-muted-dark">
                 Sin transacciones registradas todavía.
               </td>
             </tr>
@@ -64,16 +65,22 @@ export function TransactionTable({ transactions, categories, onEdit, onDelete }:
               </td>
               <td className="px-4 py-3 text-ink-muted-light dark:text-ink-muted-dark">{new Date(t.date).toLocaleDateString("es-MX")}</td>
               <td className="px-4 py-3 text-right font-medium">{formatCurrency(t.amount)}</td>
-              <td className="px-4 py-3">
-                <div className="flex justify-end gap-2">
-                  <button onClick={() => onEdit(t)} className="text-ink-muted-light dark:text-ink-muted-dark hover:text-accent">
-                    <Pencil size={16} />
-                  </button>
-                  <button onClick={() => onDelete(t)} className="text-ink-muted-light dark:text-ink-muted-dark hover:text-negative">
-                    <Trash2 size={16} />
-                  </button>
-                </div>
-              </td>
+              {showActions && (
+                <td className="px-4 py-3">
+                  <div className="flex justify-end gap-2">
+                    {onEdit && (
+                      <button onClick={() => onEdit(t)} className="text-ink-muted-light dark:text-ink-muted-dark hover:text-accent">
+                        <Pencil size={16} />
+                      </button>
+                    )}
+                    {onDelete && (
+                      <button onClick={() => onDelete(t)} className="text-ink-muted-light dark:text-ink-muted-dark hover:text-negative">
+                        <Trash2 size={16} />
+                      </button>
+                    )}
+                  </div>
+                </td>
+              )}
             </tr>
           ))}
         </tbody>

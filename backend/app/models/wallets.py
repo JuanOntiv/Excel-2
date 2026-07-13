@@ -13,14 +13,14 @@ if TYPE_CHECKING:
 class WalletCreate(SQLModel):
     name: str
     description: Optional[str] = None
-    is_default: bool = False
 
 
 class WalletUpdate(SQLModel):
+    # is_default no es asignable: la wallet default es unica y se crea
+    # automaticamente al registrar al usuario (ver services/wallets.py).
+    # is_active se maneja via el endpoint dedicado de borrado.
     name: Optional[str] = None
     description: Optional[str] = None
-    is_default: Optional[bool] = None
-    is_active: Optional[bool] = None
 
 
 class WalletRead(SQLModel):

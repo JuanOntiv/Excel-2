@@ -38,6 +38,8 @@ Status snapshot as of the last working session. Update this as items get resolve
 
 - [ ] Add the ability to switch the time range shown in the Income/Expenses charts (`MonthlyChart`, `CategoryPieChart`), defaulting to the current month instead of the current hardcoded last-12-months window.
 - [x] ~~Dashboard time range switcher~~ — **not needed**: confirmed the Dashboard should always show only the current month, with no range-switching UI. (A separate range switcher belongs on the Income/Expenses pages instead, per the item above — don't conflate the two.)
+- [ ] Export transactions to CSV/Excel — likely scoped to the current filtered view in Income/Expenses (respecting whatever date range/category filter is active), with a simple download button. Backend could generate the file directly, or the frontend could build it client-side from already-loaded data for a first pass; decide based on expected data volume.
+
 
 ## Wallets
 

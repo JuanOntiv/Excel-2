@@ -2,19 +2,21 @@ import { apiClient } from "./client";
 import type { Wallet } from "../types";
 
 export async function listWallets(): Promise<Wallet[]> {
-  const { data } = await apiClient.get<Wallet[]>("/wallets");
+  const { data } = await apiClient.get<Wallet[]>("/wallets/");
   return data;
 }
 
-export async function createWallet(payload: { name: string; description?: string; is_default?: boolean }) {
-  const { data } = await apiClient.post<Wallet>("/wallets", payload);
+export async function getWallet(id: string): Promise<Wallet> {
+  const { data } = await apiClient.get<Wallet>(`/wallets/${id}`);
   return data;
 }
 
-export async function updateWallet(
-  id: string,
-  payload: Partial<{ name: string; description: string; is_default: boolean }>
-) {
+export async function createWallet(payload: { name: string; description?: string }) {
+  const { data } = await apiClient.post<Wallet>("/wallets/", payload);
+  return data;
+}
+
+export async function updateWallet(id: string, payload: Partial<{ name: string; description: string }>) {
   const { data } = await apiClient.patch<Wallet>(`/wallets/${id}`, payload);
   return data;
 }

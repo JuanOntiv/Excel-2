@@ -4,12 +4,13 @@ import type { Transaction, Category } from "../../types";
 interface Props {
   transactions: Transaction[];
   categories: Category[];
+  title?: string;
 }
 
 // Fallback para categorías sin color asignado (ver boton de color en /categories).
 const FALLBACK_COLORS = ["#0f766e", "#b45309", "#7c3aed", "#be123c", "#0369a1", "#4d7c0f", "#a16207", "#9333ea"];
 
-export function CategoryPieChart({ transactions, categories }: Props) {
+export function CategoryPieChart({ transactions, categories, title = "Por categoría" }: Props) {
   const totals = new Map<string, number>();
   transactions.forEach((t) => {
     totals.set(t.category_id, (totals.get(t.category_id) ?? 0) + t.amount);
@@ -34,7 +35,7 @@ export function CategoryPieChart({ transactions, categories }: Props) {
 
   return (
     <div className="rounded-xl border border-line-light dark:border-line-dark bg-surface-elevated-light dark:bg-surface-elevated-dark p-5">
-      <h3 className="text-sm font-medium text-ink-muted-light dark:text-ink-muted-dark mb-4">Por categoría</h3>
+      <h3 className="text-sm font-medium text-ink-muted-light dark:text-ink-muted-dark mb-4">{title}</h3>
       <ResponsiveContainer width="100%" height={240}>
         <PieChart>
           <Pie data={data} dataKey="value" nameKey="name" innerRadius={50} outerRadius={80} paddingAngle={2}>

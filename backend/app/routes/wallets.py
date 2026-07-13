@@ -15,23 +15,6 @@ from app.utils.logs_decorator import log_action
 router = APIRouter(prefix="/wallets", tags=["Wallets"])
 
 
-def _unset_existing_default(user_id: UUID, session: Session, exclude_wallet_id: UUID = None) -> None:
-    """Desmarca cualquier wallet default existente del usuario, salvo la
-    indicada en exclude_wallet_id (para no desmarcarse a si misma al editar)."""
-    query = select(Wallet).where(
-        Wallet.user_id == user_id,
-        Wallet.is_default == True,
-        Wallet.is_active == True,
-    )
-    if exclude_wallet_id is not None:
-        query = query.where(Wallet.id != exclude_wallet_id)
-
-    existing_default = session.exec(query).first()
-    if existing_default:
-        existing_default.is_default = False
-        session.add(existing_default)
-
-
 @router.post("/", response_model=WalletRead, status_code=status.HTTP_201_CREATED)
 @log_action(action=LogAction.CREATE, table="wallets")
 def create_wallet(
@@ -39,14 +22,13 @@ def create_wallet(
     session: Session = Depends(get_session),
     current_user: User = Depends(get_current_user),
 ):
-    if wallet_in.is_default:
-        _unset_existing_default(current_user.id, session)
-
+    # Las wallets creadas por el usuario nunca son default: la default es
+    # unica y se crea automaticamente al registrarse (ver services/wallets.py).
     new_wallet = Wallet(
         user_id=current_user.id,
         name=wallet_in.name,
         description=wallet_in.description,
-        is_default=wallet_in.is_default,
+        is_default=False,
     )
     session.add(new_wallet)
     session.commit()
@@ -98,9 +80,6 @@ def update_wallet(
         raise HTTPException(status_code=404, detail="Wallet not found")
 
     update_data = wallet_in.model_dump(exclude_unset=True)
-
-    if update_data.get("is_default") is True:
-        _unset_existing_default(current_user.id, session, exclude_wallet_id=wallet_id)
 
     for key, value in update_data.items():
         setattr(wallet, key, value)

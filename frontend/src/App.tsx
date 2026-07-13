@@ -13,6 +13,7 @@ import Expenses from "./pages/Expenses";
 import Recurring from "./pages/Recurring";
 import Categories from "./pages/Categories";
 import Wallets from "./pages/Wallets";
+import WalletDetail from "./pages/WalletDetail";
 import Settings from "./pages/Settings";
 // ...
 
@@ -88,6 +89,16 @@ function App() {
 					<Wallets/>
 				  </AppShell>
 				</ProtectedRoute>
+              }
+            />
+            <Route
+              path="/wallets/:walletId"
+              element={
+                <ProtectedRoute>
+                  <AppShell>
+                    <WalletDetail />
+                  </AppShell>
+                </ProtectedRoute>
               }
             />
 			<Route

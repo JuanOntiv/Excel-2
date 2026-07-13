@@ -4,6 +4,7 @@ import type { Transaction } from "../../types";
 interface Props {
   transactions: Transaction[];
   color: string;
+  title?: string;
 }
 
 function getLast12MonthKeys(): string[] {
@@ -16,7 +17,7 @@ function getLast12MonthKeys(): string[] {
   return keys;
 }
 
-export function MonthlyChart({ transactions, color }: Props) {
+export function MonthlyChart({ transactions, color, title = "Por mes" }: Props) {
   const monthKeys = getLast12MonthKeys();
   const totals = new Map<string, number>();
 
@@ -29,7 +30,7 @@ export function MonthlyChart({ transactions, color }: Props) {
 
   return (
     <div className="rounded-xl border border-line-light dark:border-line-dark bg-surface-elevated-light dark:bg-surface-elevated-dark p-5">
-      <h3 className="text-sm font-medium text-ink-muted-light dark:text-ink-muted-dark mb-4">Por mes</h3>
+      <h3 className="text-sm font-medium text-ink-muted-light dark:text-ink-muted-dark mb-4">{title}</h3>
       <ResponsiveContainer width="100%" height={240}>
         <BarChart data={data}>
           <CartesianGrid strokeDasharray="3 3" stroke="var(--color-line-light)" />

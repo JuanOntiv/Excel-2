@@ -5,13 +5,12 @@ import type { Wallet } from "../../types";
 interface Props {
   wallet: Wallet | null;
   onClose: () => void;
-  onSubmit: (payload: { name: string; description?: string; is_default: boolean }) => Promise<void>;
+  onSubmit: (payload: { name: string; description?: string }) => Promise<void>;
 }
 
 export function WalletFormModal({ wallet, onClose, onSubmit }: Props) {
   const [name, setName] = useState(wallet?.name ?? "");
   const [description, setDescription] = useState(wallet?.description ?? "");
-  const [isDefault, setIsDefault] = useState(wallet?.is_default ?? false);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -20,7 +19,7 @@ export function WalletFormModal({ wallet, onClose, onSubmit }: Props) {
     setError(null);
     setIsSubmitting(true);
     try {
-      await onSubmit({ name, description: description || undefined, is_default: isDefault });
+      await onSubmit({ name, description: description || undefined });
       onClose();
     } catch {
       setError("No se pudo guardar la cartera.");
@@ -60,11 +59,6 @@ export function WalletFormModal({ wallet, onClose, onSubmit }: Props) {
               className="w-full px-3 py-2 rounded-lg border border-line-light dark:border-line-dark bg-transparent focus:outline-none focus:ring-2 focus:ring-accent"
             />
           </div>
-
-          <label className="flex items-center gap-2 text-sm text-ink-light dark:text-ink-dark">
-            <input type="checkbox" checked={isDefault} onChange={(e) => setIsDefault(e.target.checked)} />
-            Marcar como predeterminada
-          </label>
 
           {error && <p className="text-sm text-negative">{error}</p>}
 
