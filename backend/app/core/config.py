@@ -11,7 +11,7 @@ class Settings:
     # --- Base de datos ---
     DATABASE_URL: str = os.getenv(
         "DATABASE_URL",
-        "postgresql+psycopg2://postgres:postgres@localhost:5432/finanzas_db"
+        "postgresql+psycopg2://postgres:postgres@db:5432/finanzas_db"
     )
 
     # --- JWT ---
