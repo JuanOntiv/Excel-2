@@ -1,0 +1,5 @@
+# Dependencias EXCLUSIVAS de la suite de tests (se instalan ademas de
+# backend/requirements.txt). Se mantienen aparte para no meter herramientas de
+# testing en la imagen de produccion.
+pytest==8.3.4
+httpx==0.28.1        # requerido por fastapi.testclient (Starlette TestClient)
