@@ -13,6 +13,8 @@ if TYPE_CHECKING:
     from app.models.recurring_transactions import RecurringTransaction
     from app.models.logs import Log
     from app.models.refresh_tokens import RefreshToken
+    from app.models.goals import Goal
+    from app.models.notifications import Notification
 
 
 class UserCreate(SQLModel):
@@ -86,3 +88,5 @@ class User(SQLModel, table=True):
     recurring_transactions: list["RecurringTransaction"] = Relationship(back_populates="user")
     logs: list["Log"] = Relationship(back_populates="user")
     refresh_tokens: list["RefreshToken"] = Relationship(back_populates="user")
+    goals: list["Goal"] = Relationship(back_populates="user")
+    notifications: list["Notification"] = Relationship(back_populates="user")

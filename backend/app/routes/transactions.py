@@ -1,8 +1,12 @@
+import csv
+import io
 from datetime import datetime, date
 from uuid import UUID
-from typing import List, Optional
+from typing import List, Literal, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.responses import StreamingResponse
+from openpyxl import Workbook
 from sqlmodel import Session, select
 
 from app.db.db import get_session
@@ -15,6 +19,7 @@ from app.auth.dependencies import get_current_user
 from app.utils.logs_decorator import log_action
 from app.services.wallet_assignment import assign_wallets_for_transaction
 from app.services.wallets import get_default_wallet
+from app.services.goals import evaluate_goal_completions
 
 router = APIRouter(prefix="/transactions", tags=["Transactions"])
 
@@ -69,25 +74,25 @@ def create_transaction(
     # wallet_rules activas del usuario contra esta transaccion nueva.
     assign_wallets_for_transaction(new_trx, session, manual_wallet_id=trx_in.wallet_id)
 
+    # Tiempo real: ¿esta transaccion acaba de completar/rebasar alguna meta?
+    evaluate_goal_completions(current_user.id, session)
+
     return new_trx
 
 
-@router.get("/", response_model=List[TransactionRead])
-def list_transactions(
-    session: Session = Depends(get_session),
-    current_user: User = Depends(get_current_user),
-    skip: int = 0,
-    limit: int = 100,
+def _build_transaction_query(
+    current_user: User,
+    session: Session,
     type: Optional[TransactionType] = None,
     category_id: Optional[UUID] = None,
     wallet_id: Optional[UUID] = None,
     start_date: Optional[date] = None,
     end_date: Optional[date] = None,
 ):
-    """Lista transacciones del usuario. Si se pasa wallet_id, filtra
-    SOLO las transacciones asociadas a ese wallet via Transaction_Wallets
-    (manual o por regla). Sin wallet_id, devuelve todo (= comportamiento
-    del wallet default, que es implicito)."""
+    """Filtro compartido por list_transactions y export_transactions. Si se
+    pasa wallet_id, filtra SOLO las transacciones asociadas a ese wallet via
+    Transaction_Wallets (manual o por regla). Sin wallet_id, devuelve todo
+    (= comportamiento del wallet default, que es implicito)."""
     if wallet_id:
         _validate_wallet_ownership(wallet_id, current_user, session)
         from app.models.transactions_wallets import TransactionWallet
@@ -107,9 +112,8 @@ def list_transactions(
             Transaction.is_active == True,
         )
 
-
     if type:
-   		query = query.where(Transaction.type == type)
+        query = query.where(Transaction.type == type)
     if category_id:
         query = query.where(Transaction.category_id == category_id)
     if start_date:
@@ -117,19 +121,89 @@ def list_transactions(
     if end_date:
         query = query.where(Transaction.date <= end_date)
 
+    return query
+
+
+@router.get("/", response_model=List[TransactionRead])
+def list_transactions(
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+    skip: int = 0,
+    limit: int = 100,
+    type: Optional[TransactionType] = None,
+    category_id: Optional[UUID] = None,
+    wallet_id: Optional[UUID] = None,
+    start_date: Optional[date] = None,
+    end_date: Optional[date] = None,
+):
+    query = _build_transaction_query(current_user, session, type, category_id, wallet_id, start_date, end_date)
     return session.exec(query.offset(skip).limit(limit)).all()
 
 
-@router.get("/{transaction_id}", response_model=TransactionRead)
-def get_transaction(
-    transaction_id: UUID,
+@router.get("/export")
+def export_transactions(
     session: Session = Depends(get_session),
     current_user: User = Depends(get_current_user),
+    format: Literal["csv", "xlsx"] = "csv",
+    type: Optional[TransactionType] = None,
+    category_id: Optional[UUID] = None,
+    wallet_id: Optional[UUID] = None,
+    start_date: Optional[date] = None,
+    end_date: Optional[date] = None,
 ):
-    trx = session.get(Transaction, transaction_id)
-    if not trx or not trx.is_active or trx.user_id != current_user.id:
-        raise HTTPException(404, "Transaction not found")
-    return trx
+    """Exporta las transacciones del usuario (mismos filtros que list_transactions,
+    sin paginar) a CSV o XLSX."""
+    query = _build_transaction_query(current_user, session, type, category_id, wallet_id, start_date, end_date)
+    transactions = session.exec(query.order_by(Transaction.date.desc())).all()
+
+    category_ids = {t.category_id for t in transactions}
+    categories = session.exec(select(Category).where(Category.id.in_(category_ids))).all() if category_ids else []
+    category_names = {c.id: c.name for c in categories}
+
+    headers = ["Nombre", "Descripción", "Categoría", "Tipo", "Monto", "Fecha"]
+    type_labels = {TransactionType.INCOME: "Ingreso", TransactionType.EXPENSE: "Egreso"}
+
+    def rows():
+        for t in transactions:
+            yield [
+                t.name,
+                t.description or "",
+                category_names.get(t.category_id, "—"),
+                type_labels[t.type],
+                float(t.amount),
+                t.date.strftime("%Y-%m-%d"),
+            ]
+
+    filename_base = f"transacciones_{type.value if type else 'todas'}"
+
+    if format == "csv":
+        buffer = io.StringIO()
+        buffer.write("﻿")  # BOM: para que Excel detecte UTF-8 correctamente
+        writer = csv.writer(buffer)
+        writer.writerow(headers)
+        writer.writerows(rows())
+        buffer.seek(0)
+        return StreamingResponse(
+            iter([buffer.getvalue()]),
+            media_type="text/csv; charset=utf-8",
+            headers={"Content-Disposition": f'attachment; filename="{filename_base}.csv"'},
+        )
+
+    workbook = Workbook()
+    sheet = workbook.active
+    sheet.title = "Transacciones"
+    sheet.append(headers)
+    for row in rows():
+        sheet.append(row)
+
+    buffer = io.BytesIO()
+    workbook.save(buffer)
+    buffer.seek(0)
+    return StreamingResponse(
+        buffer,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f'attachment; filename="{filename_base}.xlsx"'},
+    )
 
 
 @router.get("/summary")
@@ -167,6 +241,18 @@ def get_transactions_summary(
         "balance": float(total_income - total_expenses),
         "count": len(results),
     }
+
+
+@router.get("/{transaction_id}", response_model=TransactionRead)
+def get_transaction(
+    transaction_id: UUID,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+):
+    trx = session.get(Transaction, transaction_id)
+    if not trx or not trx.is_active or trx.user_id != current_user.id:
+        raise HTTPException(404, "Transaction not found")
+    return trx
 
 
 @router.patch("/{transaction_id}", response_model=TransactionRead)
@@ -210,6 +296,9 @@ def update_transaction(
         manual_wallet_id=manual_wallet_id,
         update_manual=wallet_id_provided,
     )
+
+    # Editar monto/fecha/categoria/tipo puede cruzar el umbral de una meta.
+    evaluate_goal_completions(current_user.id, session)
 
     return trx
 

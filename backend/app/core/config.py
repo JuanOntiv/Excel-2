@@ -22,6 +22,12 @@ class Settings:
     ACCESS_TOKEN_EXPIRE_MINUTES: int = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "15"))
     REFRESH_TOKEN_EXPIRE_DAYS: int = int(os.getenv("REFRESH_TOKEN_EXPIRE_DAYS", "30"))
 
+    # --- Rate limiting de login ---
+    # Tras LOGIN_MAX_ATTEMPTS fallos dentro de la ventana, se bloquean nuevos
+    # intentos hasta que la ventana expire (protege contra fuerza bruta).
+    LOGIN_MAX_ATTEMPTS: int = int(os.getenv("LOGIN_MAX_ATTEMPTS", "5"))
+    LOGIN_ATTEMPT_WINDOW_SECONDS: int = int(os.getenv("LOGIN_ATTEMPT_WINDOW_SECONDS", "900"))
+
 
 @lru_cache
 def get_settings() -> Settings:

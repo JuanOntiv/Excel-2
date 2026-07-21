@@ -2,7 +2,11 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "./context/AuthContext";
 import { ThemeProvider } from "./context/ThemeContext";
+import { ToastProvider } from "./context/ToastContext";
+import { Toaster } from "./components/ui/Toaster";
 import { ProtectedRoute } from "./routes/ProtectedRoute";
+import { PublicOnlyRoute } from "./routes/PublicOnlyRoute";
+import { AdminRoute } from "./routes/AdminRoute";
 import { AppShell } from "./components/layout/AppShell";
 import Landing from "./pages/Landing";
 import Login from "./pages/Login";
@@ -14,22 +18,43 @@ import Recurring from "./pages/Recurring";
 import Categories from "./pages/Categories";
 import Wallets from "./pages/Wallets";
 import WalletDetail from "./pages/WalletDetail";
+import Goals from "./pages/Goals";
+import Admin from "./pages/Admin";
 import Settings from "./pages/Settings";
+import NotFound from "./pages/NotFound";
 // ...
-
-function Placeholder({ title }: { title: string }) {
-  return <h1 className="text-2xl font-semibold">{title}</h1>;
-}
 
 function App() {
   return (
     <ThemeProvider>
-      <AuthProvider>
-        <BrowserRouter>
+      <ToastProvider>
+        <AuthProvider>
+          <BrowserRouter>
           <Routes>
-            <Route path="/" element={<Landing />} />
-            <Route path="/login" element={<Login />} />
-            <Route path="/register" element={<Register />} />
+            <Route
+              path="/"
+              element={
+                <PublicOnlyRoute>
+                  <Landing />
+                </PublicOnlyRoute>
+              }
+            />
+            <Route
+              path="/login"
+              element={
+                <PublicOnlyRoute>
+                  <Login />
+                </PublicOnlyRoute>
+              }
+            />
+            <Route
+              path="/register"
+              element={
+                <PublicOnlyRoute>
+                  <Register />
+                </PublicOnlyRoute>
+              }
+            />
 
             <Route
               path="/dashboard"
@@ -92,6 +117,16 @@ function App() {
               }
             />
             <Route
+              path="/goals"
+              element={
+                <ProtectedRoute>
+                  <AppShell>
+                    <Goals />
+                  </AppShell>
+                </ProtectedRoute>
+              }
+            />
+            <Route
               path="/wallets/:walletId"
               element={
                 <ProtectedRoute>
@@ -111,9 +146,34 @@ function App() {
 				  </ProtectedRoute>
 				}
 		  	/>
+            <Route
+              path="/admin"
+              element={
+                <AdminRoute>
+                  <AppShell>
+                    <Admin />
+                  </AppShell>
+                </AdminRoute>
+              }
+            />
+
+            {/* Catch-all: cualquier ruta no definida muestra el 404 dentro del
+                shell autenticado (usuarios sin sesión son enviados a /login). */}
+            <Route
+              path="*"
+              element={
+                <ProtectedRoute>
+                  <AppShell>
+                    <NotFound />
+                  </AppShell>
+                </ProtectedRoute>
+              }
+            />
           </Routes>
-        </BrowserRouter>
-      </AuthProvider>
+          </BrowserRouter>
+          <Toaster />
+        </AuthProvider>
+      </ToastProvider>
     </ThemeProvider>
   );
 }

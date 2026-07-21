@@ -1,4 +1,5 @@
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
+import { ChartTooltip } from "../charts/ChartTooltip";
 import type { Transaction } from "../../types";
 
 interface Props {
@@ -30,14 +31,27 @@ export function MonthlyChart({ transactions, color, title = "Por mes" }: Props) 
 
   return (
     <div className="rounded-xl border border-line-light dark:border-line-dark bg-surface-elevated-light dark:bg-surface-elevated-dark p-5">
-      <h3 className="text-sm font-medium text-ink-muted-light dark:text-ink-muted-dark mb-4">{title}</h3>
+      <h3 className="text-base font-semibold text-ink-light dark:text-ink-dark mb-4">{title}</h3>
       <ResponsiveContainer width="100%" height={240}>
-        <BarChart data={data}>
-          <CartesianGrid strokeDasharray="3 3" stroke="var(--color-line-light)" />
-          <XAxis dataKey="month" fontSize={12} stroke="var(--color-ink-muted-light)" />
-          <YAxis fontSize={12} stroke="var(--color-ink-muted-light)" />
-          <Tooltip />
-          <Bar dataKey="total" fill={color} radius={[4, 4, 0, 0]} />
+        <BarChart data={data} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
+          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="currentColor" className="text-line-light dark:text-line-dark" />
+          <XAxis
+            dataKey="month"
+            tickLine={false}
+            axisLine={false}
+            tick={{ fontSize: 12, fill: "currentColor" }}
+            className="text-ink-muted-light dark:text-ink-muted-dark"
+          />
+          <YAxis
+            width={48}
+            tickLine={false}
+            axisLine={false}
+            tick={{ fontSize: 12, fill: "currentColor" }}
+            className="text-ink-muted-light dark:text-ink-muted-dark"
+            tickFormatter={(v: number) => (Math.abs(v) >= 1000 ? `$${Math.round(v / 1000)}k` : `$${v}`)}
+          />
+          <Tooltip cursor={{ fill: "currentColor", opacity: 0.06 }} content={<ChartTooltip />} />
+          <Bar dataKey="total" fill={color} radius={[4, 4, 0, 0]} maxBarSize={48} />
         </BarChart>
       </ResponsiveContainer>
     </div>

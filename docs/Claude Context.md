@@ -8,7 +8,7 @@ A full-stack personal finance manager. Success criteria: a deployed, production-
 
 ## Stack
 
-- **Backend**: FastAPI, SQLModel, PostgreSQL, Alembic, Docker Compose, bcrypt (direct, not via `passlib` — compatibility issues with modern bcrypt), JWT (access + refresh, refresh tokens stored as SHA-256 hashes, rotated on use)
+- **Backend**: FastAPI, SQLModel, PostgreSQL, Alembic, Docker Compose, bcrypt (direct, not via `passlib` — compatibility issues with modern bcrypt), JWT (access + refresh, refresh tokens stored as SHA-256 hashes, rotated on use), `openpyxl` (server-side XLSX generation for the transactions export)
 - **Frontend**: React + TypeScript + Vite, Tailwind CSS **v4** (not v3 — this matters, see below), Zustand (transaction/filter state), Context API (auth, theme only), Recharts, React Router, Axios
 - **Docker-first**: everything runs via `docker compose`; migrations run via `docker compose exec backend alembic ...` from the host.
 
@@ -16,7 +16,7 @@ A full-stack personal finance manager. Success criteria: a deployed, production-
 
 1. **Tailwind v4, not v3.** No `tailwind.config.js` content array, no `postcss.config.js`. Setup is `@tailwindcss/vite` plugin in `vite.config.ts` + `@import "tailwindcss";` in `index.css`. Dark mode requires the explicit line `@custom-variant dark (&:where(.dark, .dark *));` in `index.css` — without it, Tailwind follows OS `prefers-color-scheme` instead of the `.dark` class the app's `ThemeContext` toggles. This already caused a real bug (everything went black because dark mode was OS-driven, not app-driven).
 
-2. **Login is form-encoded, not JSON.** `POST /auth/login` uses `OAuth2PasswordRequestForm` (FastAPI/Swagger convention), so the frontend must send `application/x-www-form-urlencoded` with fields `username` (holds the email) and `password`. See `src/api/auth.ts`.
+2. **Login is form-encoded, not JSON.** `POST /auth/login` uses `OAuth2PasswordRequestForm` (FastAPI/Swagger convention), so the frontend must send `application/x-www-form-urlencoded` with fields `username` (holds the email) and `password`. See `src/api/auth.tsx`.
 
 3. **User id is a UUID (string), not a number.** All entity IDs across the app are UUIDs.
 
@@ -24,9 +24,7 @@ A full-stack personal finance manager. Success criteria: a deployed, production-
 
 5. **User profile endpoint is `GET /users/me`, not `/auth/me`.** Registration is `POST /users/register`, not `/auth/register`.
 
-6. **The wallet "default" concept is split into two unrelated things:**
-   - The *implicit* default wallet = all of a user's transactions, with no row in the `wallets` table at all. It's just "no wallet filter applied."
-   - The `is_default: bool` column on `Wallet` = a marker the user can put on one of their **custom** wallets — originally ambiguous with the concept above, being resolved (per Juan, "at half" as of last check-in — confirm current state before touching wallet code). Do not conflate these two concepts in any future wallet feature.
+6. **The wallet "default" concept is resolved — it's a real row, not purely implicit.** `create_default_wallet()` (`app/services/wallets.py`) runs once at registration and materializes an actual `Wallet` row (name "General", `is_default=True`). `GET /wallets` returns it alongside custom wallets; `Wallets.tsx` renders it with a star icon, no delete button, and no rules panel (rules don't apply to it — it's not rule-assignable, it's just "everything"). Its balance is still computed on the fly from transactions, never cached on the row. Only one `is_default=True` row should ever exist per user — don't add a second path that creates one.
 
 7. **Category visibility (`is_hidden`) is NOT a column on `Category`.** It lives in a separate `UserCategoryPreference` table (`user_category_preferences`), keyed by `(user_id, category_id)`, because `Category` rows can be **global** (`user_id = null`, shared across all users) — putting `is_hidden` directly on `Category` would hide it for every user at once. This was caught and fixed before it shipped; don't reintroduce it. Same table also holds `color` (per-user custom color for a category, including global ones).
 
@@ -41,7 +39,9 @@ A full-stack personal finance manager. Success criteria: a deployed, production-
 
 10. **Wallet rules (`WalletRule`) are polymorphic by `rule_type`.** Only the fields relevant to the chosen `rule_type` (`Category`, `TransactionType`, `Keyword`, `DateRange`, `AmountRange`) are populated; the rest stay null. The frontend form switches visible fields based on `rule_type` and disables changing `rule_type` on an existing rule (same reasoning as #9 — mixing stale fields from a different rule_type is a footgun). The backend validates this server-side in `_validate_rule_fields`.
 
-11. **Currency formatting is centralized** in `src/utils/date.ts` (`formatCurrency`), currently hardcoded to `MXN`. If this needs to change or become configurable, this is the only place to touch.
+11. **Currency formatting is centralized** in `src/utils/date.tsx` (`formatCurrency`), currently hardcoded to `MXN`. If this needs to change or become configurable, this is the only place to touch.
+
+12. **In FastAPI/Starlette, a static path and a dynamic `{param}` path at the same segment depth are matched in registration order, not by specificity.** `router.get("/{transaction_id}")` will happily swallow a request to `/summary` or `/export` if it's registered first — Starlette doesn't backtrack to try a later, better-matching route. `GET /transactions/summary` was already registered after `GET /transactions/{transaction_id}` before this was noticed; when the export endpoint was added (`GET /transactions/export`), it was deliberately placed *before* `/{transaction_id}` to avoid the same trap. Any new static sub-route under an existing resource router must go above the `{id}` routes, not below.
 
 ## Known backend bugs found & fixed during frontend integration
 
@@ -51,6 +51,7 @@ A full-stack personal finance manager. Success criteria: a deployed, production-
 - `update_my_profile` set `current_user.password_hash` but the model's real column is `password` → fixed (per Juan, already applied).
 - No endpoint existed to compute income/expense totals → added `GET /transactions/summary`.
 - No way to filter transactions by `type` → added `type` query param to `GET /transactions`.
+- `GET /transactions/summary` was itself a victim of gotcha #12 above: it got registered *below* `GET /transactions/{transaction_id}`, so every call 422'd (FastAPI tried to parse `"summary"` as a UUID) until the Dashboard was wired to actually call it (2026-07-20) and the bug surfaced. Fixed by moving `/summary` above `/{transaction_id}` in `routes/transactions.py`. Lesson: a static route existing "in the codebase" isn't proof it's reachable — verify with a real request, since it can be added in the wrong position and sit unused/untested for a while before something finally calls it.
 
 ## Color system
 
@@ -69,33 +70,44 @@ When adding new UI, use these tokens (`bg-surface-elevated-light dark:bg-surface
 
 ```
 src/
-├── api/                  # One file per backend resource. Axios calls only, no business logic.
-│   ├── client.ts          # Axios instance + JWT interceptor (attach token, auto-refresh on 401)
-│   ├── auth.ts            # login (form-encoded!), refresh, logout, register
-│   ├── users.ts           # profile update, account deactivation
-│   ├── categories.ts       # CRUD + /preferences endpoint (hide/color)
-│   ├── transactions.ts     # CRUD, filtered by type/category/wallet/date
-│   ├── recurring.ts        # CRUD + pause/resume/execute/execute-pending
-│   ├── wallets.ts          # CRUD
-│   └── walletRules.ts      # CRUD, polymorphic payload by rule_type
+├── api/                  # One file per backend resource (all .tsx, not .ts). Axios calls only, no business logic.
+│   ├── client.tsx          # Axios instance + JWT interceptor (attach token, auto-refresh on 401)
+│   ├── auth.tsx            # login (form-encoded!), refresh, logout, register
+│   ├── users.tsx           # profile update, account deactivation
+│   ├── admin.tsx           # is_admin-only: list/deactivate/reactivate users, reset a user's password
+│   ├── categories.tsx       # CRUD + /preferences endpoint (hide/color)
+│   ├── transactions.tsx     # CRUD, filtered by type/category/wallet/date; exportTransactions() downloads CSV/XLSX blobs from GET /transactions/export
+│   ├── recurring.tsx        # CRUD + pause/resume/execute/execute-pending
+│   ├── wallets.tsx          # CRUD
+│   ├── walletRules.tsx      # CRUD, polymorphic payload by rule_type
+│   └── goals.tsx            # CRUD; progress (current_amount/percentage/is_on_track) comes back on the read model, computed server-side
 ├── context/
 │   ├── AuthContext.tsx     # user, login, logout, refreshUser — also fires executePending() on login
 │   └── ThemeContext.tsx    # light/dark toggle, persisted to localStorage + <html class="dark">
 ├── hooks/
-│   └── useTransactionsByType.ts   # shared data-fetching hook behind TransactionsView
+│   ├── useTransactionsByType.tsx   # shared data-fetching hook behind TransactionsView (Income/Expenses)
+│   └── useWalletTransactions.tsx   # data-fetching hook behind WalletDetail
 ├── components/
 │   ├── layout/             # Sidebar (desktop), BottomNav + MobileHeader (mobile), AppShell (wraps both)
-│   ├── transactions/       # TransactionsView (generic, parametrized by type) + its subcomponents
-│   │                         (MonthlyChart, CategoryPieChart, HighlightCards, TransactionTable, TransactionFormModal)
+│   ├── transactions/       # TransactionsView (generic, parametrized by type) + TransactionTable, TransactionFilters,
+│   │                         TransactionFormModal, CategoryFormModal. Also still has MonthlyChart/CategoryPieChart,
+│   │                         but those are now only used by WalletDetail.tsx, NOT TransactionsView.
+│   ├── charts/             # TimeBarChart, CategoryDonut, ChartTooltip — the newer chart components TransactionsView
+│   │                         actually uses (period-driven, see gotcha below); a naming split from components/transactions/ worth knowing about.
 │   ├── recurring/          # StatusBadge, PendingConfirmationBanner, RecurringFormModal, RecurringTable
 │   ├── categories/         # CategoryFormModal
 │   ├── wallets/            # WalletFormModal, WalletRuleFormModal, WalletRulesPanel
-│   └── dashboard/          # SummaryCard (reused by both Dashboard and TransactionsView's HighlightCards)
-├── pages/                  # One per route; most are thin wrappers around the components above
+│   ├── goals/              # GoalFormModal
+│   ├── admin/              # ResetPasswordModal
+│   └── dashboard/          # SummaryCard, MonthlyTrendChart, ExpenseDonut, panels.tsx (GoalsPreview, WalletsPreview, RecentTransactionsPreview)
+├── pages/                  # One per route; most are thin wrappers around the components above. Includes
+│                             Admin.tsx (behind AdminRoute), Goals.tsx, NotFound.tsx (catch-all "*" route).
 ├── routes/
-│   └── ProtectedRoute.tsx  # Redirects to /login if not authenticated
+│   ├── ProtectedRoute.tsx  # Redirects to /login if not authenticated
+│   ├── PublicOnlyRoute.tsx # Redirects away from /login,/register if already authenticated
+│   └── AdminRoute.tsx      # Redirects/blocks unless current_user.is_admin
 ├── types/index.ts          # All shared TS interfaces/types — check here first before assuming a field name
-└── utils/date.ts           # Date range helpers + formatCurrency (MXN, centralized)
+└── utils/date.tsx          # Date range helpers + formatCurrency (MXN, centralized)
 ```
 
 **Key reusability decision**: `TransactionsView` is generic over `type: "income" | "expense"` and used by both `Income.tsx` and `Expenses.tsx` — do not duplicate this component. Recurring and Wallets intentionally do **not** share this component; they have different domain concerns (see gotchas #9–10).

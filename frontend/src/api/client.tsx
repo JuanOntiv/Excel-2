@@ -32,7 +32,9 @@ function handleSessionExpired() {
   sessionExpired = true;
   clearTokens();
   if (window.location.pathname !== "/login") {
-    window.location.replace("/login"); // UX only; guard flag already stops retries
+    // El query param permite que /login muestre un aviso de "sesión expirada"
+    // en vez de dejar al usuario sin explicación (ver pages/Login.tsx).
+    window.location.replace("/login?session=expired"); // UX only; guard flag already stops retries
   }
 }
 

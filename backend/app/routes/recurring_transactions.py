@@ -22,6 +22,9 @@ from app.models.logs import LogAction, LogLevel
 from app.auth.dependencies import get_current_user
 from app.utils.logs_decorator import log_action
 from app.services.wallet_assignment import assign_wallets_for_transaction
+from app.services.notifications import create_notification
+from app.services.goals import evaluate_goal_completions, flag_expired_goals
+from app.models.notifications import NotificationType
 
 router = APIRouter(prefix="/recurring-transactions", tags=["Recurring Transactions"])
 
@@ -306,8 +309,47 @@ def execute_pending(
         try:
             _execute_one(trx, session)
             created_count += 1
+            # Aviso persistente: se registro sola sin que el usuario mirara.
+            create_notification(
+                session,
+                user_id=current_user.id,
+                type=NotificationType.RECURRING_EXECUTED,
+                title="Transacción recurrente registrada",
+                message=f'Se registró automáticamente "{trx.name}" por ${float(trx.amount):,.2f}.',
+                entity_type="recurring_transaction",
+                entity_id=trx.id,
+            )
         except Exception as e:
             errors.append({"id": str(trx.id), "error": str(e)})
+
+    # Las recurrentes con auto_execute=False vencidas no se ejecutan solas: se
+    # avisa que esperan confirmacion. dedupe evita re-notificar en cada login.
+    awaiting = session.exec(
+        select(RecurringTransaction).where(
+            RecurringTransaction.user_id == current_user.id,
+            RecurringTransaction.is_active == True,
+            RecurringTransaction.status == RecurringTransactionStatus.ACTIVE,
+            RecurringTransaction.auto_execute == False,
+            RecurringTransaction.next_execution <= today,
+        )
+    ).all()
+    for trx in awaiting:
+        create_notification(
+            session,
+            user_id=current_user.id,
+            type=NotificationType.RECURRING_PENDING,
+            title="Recurrente esperando confirmación",
+            message=f'"{trx.name}" venció y espera tu confirmación.',
+            entity_type="recurring_transaction",
+            entity_id=trx.id,
+            dedupe=True,
+        )
+
+    # execute-pending es el hook de login: aprovechamos para cerrar metas cuyo
+    # periodo termino (caso time-based que ninguna escritura de transaccion
+    # dispara) y para evaluar metas completadas por las recurrentes recien creadas.
+    evaluate_goal_completions(current_user.id, session)
+    flag_expired_goals(current_user.id, session)
 
     return {
         "message": f"Executed {created_count} pending recurring transactions",

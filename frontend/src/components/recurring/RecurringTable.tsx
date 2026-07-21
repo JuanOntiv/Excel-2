@@ -1,6 +1,7 @@
 import { Pencil, Pause, Play, XCircle, Zap } from "lucide-react";
 import { StatusBadge } from "./StatusBadge";
 import { formatCurrency } from "../../utils/date";
+import { dotToneForId } from "../../utils/rowTone";
 import type { RecurringTransaction, Category } from "../../types";
 
 interface Props {
@@ -50,7 +51,12 @@ export function RecurringTable({ items, categories, onEdit, onPause, onResume, o
           )}
           {items.map((t) => (
             <tr key={t.id} className="border-b border-line-light dark:border-line-dark last:border-0">
-              <td className="px-4 py-3">{t.name}</td>
+              <td className="px-4 py-3">
+                <span className="inline-flex items-center gap-2">
+                  <span className={`w-2 h-2 rounded-full shrink-0 ${dotToneForId(t.id)}`} />
+                  {t.name}
+                </span>
+              </td>
               <td className="px-4 py-3 text-ink-muted-light dark:text-ink-muted-dark">
                 <span className="inline-flex items-center gap-2">
                   {categoryColor(t.category_id) && (
@@ -67,31 +73,31 @@ export function RecurringTable({ items, categories, onEdit, onPause, onResume, o
                 {t.status === "cancelled" ? "—" : new Date(t.next_execution).toLocaleDateString("es-MX")}
               </td>
               <td className="px-4 py-3"><StatusBadge status={t.status} /></td>
-              <td className="px-4 py-3 text-right font-medium">{formatCurrency(t.amount)}</td>
+              <td className="px-4 py-3 text-right font-medium font-mono tabular-nums">{formatCurrency(t.amount)}</td>
               <td className="px-4 py-3">
                 <div className="flex justify-end gap-2">
                   {t.status === "active" && (
                     <>
-                      <button onClick={() => onExecuteNow(t)} title="Ejecutar ahora" className="text-ink-muted-light dark:text-ink-muted-dark hover:text-accent">
+                      <button onClick={() => onExecuteNow(t)} title="Ejecutar ahora" className="cursor-pointer text-ink-muted-light dark:text-ink-muted-dark hover:text-accent">
                         <Zap size={16} />
                       </button>
-                      <button onClick={() => onEdit(t)} title="Editar" className="text-ink-muted-light dark:text-ink-muted-dark hover:text-accent">
+                      <button onClick={() => onEdit(t)} title="Editar" className="cursor-pointer text-ink-muted-light dark:text-ink-muted-dark hover:text-accent">
                         <Pencil size={16} />
                       </button>
-                      <button onClick={() => onPause(t)} title="Pausar" className="text-ink-muted-light dark:text-ink-muted-dark hover:text-amber-600">
+                      <button onClick={() => onPause(t)} title="Pausar" className="cursor-pointer text-ink-muted-light dark:text-ink-muted-dark hover:text-amber-600">
                         <Pause size={16} />
                       </button>
-                      <button onClick={() => onCancel(t)} title="Cancelar" className="text-ink-muted-light dark:text-ink-muted-dark hover:text-negative">
+                      <button onClick={() => onCancel(t)} title="Cancelar" className="cursor-pointer text-ink-muted-light dark:text-ink-muted-dark hover:text-negative">
                         <XCircle size={16} />
                       </button>
                     </>
                   )}
                   {t.status === "paused" && (
                     <>
-                      <button onClick={() => onResume(t)} title="Reanudar" className="text-ink-muted-light dark:text-ink-muted-dark hover:text-accent">
+                      <button onClick={() => onResume(t)} title="Reanudar" className="cursor-pointer text-ink-muted-light dark:text-ink-muted-dark hover:text-accent">
                         <Play size={16} />
                       </button>
-                      <button onClick={() => onCancel(t)} title="Cancelar" className="text-ink-muted-light dark:text-ink-muted-dark hover:text-negative">
+                      <button onClick={() => onCancel(t)} title="Cancelar" className="cursor-pointer text-ink-muted-light dark:text-ink-muted-dark hover:text-negative">
                         <XCircle size={16} />
                       </button>
                     </>

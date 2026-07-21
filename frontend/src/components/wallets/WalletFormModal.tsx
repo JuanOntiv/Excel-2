@@ -1,4 +1,5 @@
-import { useState, FormEvent } from "react";
+import { useState } from "react";
+import type { FormEvent } from "react";
 import { X } from "lucide-react";
 import type { Wallet } from "../../types";
 

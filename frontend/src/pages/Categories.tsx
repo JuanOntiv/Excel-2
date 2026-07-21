@@ -9,6 +9,8 @@ import {
   updateCategoryColor,
 } from "../api/categories";
 import { CategoryFormModal } from "../components/transactions/CategoryFormModal";
+import { NotificationBell } from "../components/notifications/NotificationBell";
+import { useToast } from "../context/ToastContext";
 import type { Category, CategoryType } from "../types";
 
 const typeLabels: Record<CategoryType, string> = {
@@ -87,7 +89,7 @@ function CategoryTable({
                     >
                       <span
                         className="w-4 h-4 rounded-full border border-line-light dark:border-line-dark"
-                        style={{ backgroundColor: c.color ?? "transparent" }}
+                        style={{ backgroundColor: c.color ?? DEFAULT_SWATCH }}
                       />
                       <input
                         type="color"
@@ -141,6 +143,7 @@ function CategoryTable({
 }
 
 export default function Categories() {
+  const { toast } = useToast();
   const [categories, setCategories] = useState<Category[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showHidden, setShowHidden] = useState(false);
@@ -183,6 +186,7 @@ export default function Categories() {
       await createCategory(name, type);
     }
     await load();
+    toast.success(editing ? "Categoría actualizada." : "Categoría creada.");
   }
 
   async function handleToggleHidden(c: Category) {
@@ -201,8 +205,13 @@ export default function Categories() {
 
   async function handleDelete(c: Category) {
     if (!confirm(`¿Eliminar "${c.name}"? Esta acción no se puede deshacer.`)) return;
-    await deleteCategory(c.id);
-    await load();
+    try {
+      await deleteCategory(c.id);
+      await load();
+      toast.success("Categoría eliminada.");
+    } catch {
+      toast.error("No se pudo eliminar la categoría.");
+    }
   }
 
   const globalCategories = categories.filter((c) => c.user_id === null);
@@ -212,13 +221,16 @@ export default function Categories() {
     <div>
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-semibold text-ink-light dark:text-ink-dark">Categorías</h1>
-        <button
-          onClick={openCreate}
-          className="flex items-center gap-2 px-4 py-2 rounded-lg bg-accent text-white font-medium hover:opacity-90"
-        >
-          <Plus size={18} />
-          Nueva
-        </button>
+        <div className="flex items-center gap-2">
+          <NotificationBell align="right" />
+          <button
+            onClick={openCreate}
+            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-accent text-white font-medium hover:opacity-90"
+          >
+            <Plus size={18} />
+            Nueva
+          </button>
+        </div>
       </div>
 
       <label className="flex items-center gap-2 mb-4 text-sm text-ink-muted-light dark:text-ink-muted-dark">

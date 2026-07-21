@@ -15,6 +15,58 @@ export async function listTransactions(params: ListTransactionsParams = {}): Pro
   return data;
 }
 
+export interface TransactionsSummary {
+  wallet_id: string | null;
+  wallet_name: string | null;
+  total_income: number;
+  total_expenses: number;
+  balance: number;
+  count: number;
+}
+
+interface TransactionsSummaryParams {
+  start_date?: string;
+  end_date?: string;
+}
+
+export async function getTransactionsSummary(
+  params: TransactionsSummaryParams = {}
+): Promise<TransactionsSummary> {
+  const { data } = await apiClient.get<TransactionsSummary>("/transactions/summary", { params });
+  return data;
+}
+
+interface ExportTransactionsParams {
+  format: "csv" | "xlsx";
+  type?: TransactionType;
+  start_date?: string;
+  end_date?: string;
+  category_id?: string;
+  wallet_id?: string;
+}
+
+// Descarga el export generado por el backend (mismo filtrado que /transactions)
+// y dispara la descarga en el navegador usando el filename del Content-Disposition.
+export async function exportTransactions(params: ExportTransactionsParams): Promise<void> {
+  const response = await apiClient.get("/transactions/export", {
+    params,
+    responseType: "blob",
+  });
+
+  const disposition: string = response.headers["content-disposition"] ?? "";
+  const filenameMatch = disposition.match(/filename="?([^"]+)"?/);
+  const filename = filenameMatch ? filenameMatch[1] : `transacciones.${params.format}`;
+
+  const url = window.URL.createObjectURL(response.data as Blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.URL.revokeObjectURL(url);
+}
+
 export async function createTransaction(payload: {
   name: string;
   description?: string;

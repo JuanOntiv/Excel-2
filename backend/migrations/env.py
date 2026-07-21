@@ -4,6 +4,7 @@ from logging.config import fileConfig
 from sqlalchemy import engine_from_config, pool
 from alembic import context
 from sqlmodel import SQLModel
+import sqlmodel.sql.sqltypes
 
 # Importar el paquete de modelos registra todas las tablas en
 # SQLModel.metadata, necesario para el autogenerate de Alembic.
@@ -31,6 +32,17 @@ target_metadata = SQLModel.metadata
 database_url = os.getenv("DATABASE_URL")
 if database_url:
 	config.set_main_option("sqlalchemy.url", database_url)
+
+
+def render_item(type_, obj, autogen_context):
+    """Emite el import de sqlmodel cuando autogenerate usa sus tipos custom
+    (ej. AutoString), que si no se declaran producen NameError al correr la
+    migracion (sqlmodel no se importa por defecto en el template)."""
+    if type_ == "type" and isinstance(obj, sqlmodel.sql.sqltypes.AutoString):
+        autogen_context.imports.add("import sqlmodel")
+        length = getattr(obj, "length", None)
+        return "sqlmodel.sql.sqltypes.AutoString(length=%r)" % length if length else "sqlmodel.sql.sqltypes.AutoString()"
+    return False
 
 
 def run_migrations_offline() -> None:
@@ -76,6 +88,7 @@ def run_migrations_online() -> None:
             connection=connection,
             target_metadata=target_metadata,
             compare_type=True,
+            render_item=render_item,
         )
 
         with context.begin_transaction():

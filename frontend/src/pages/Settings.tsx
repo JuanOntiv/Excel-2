@@ -1,23 +1,26 @@
-import { useState, FormEvent } from "react";
+import { useState } from "react";
+import type { FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { useToast } from "../context/ToastContext";
 import { updateProfile, deactivateAccount, changePassword } from "../api/users";
+import { NotificationBell } from "../components/notifications/NotificationBell";
+import { validatePasswordStrength, PASSWORD_REQUIREMENTS } from "../utils/password";
 
 export default function Settings() {
   const { user, refreshUser, logout } = useAuth();
+  const { toast } = useToast();
   const navigate = useNavigate();
 
   const [name, setName] = useState(user?.name ?? "");
   const [mail, setMail] = useState(user?.mail ?? "");
   const [profileError, setProfileError] = useState<string | null>(null);
-  const [profileSuccess, setProfileSuccess] = useState(false);
   const [isSavingProfile, setIsSavingProfile] = useState(false);
 
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [passwordError, setPasswordError] = useState<string | null>(null);
-  const [passwordSuccess, setPasswordSuccess] = useState(false);
   const [isSavingPassword, setIsSavingPassword] = useState(false);
 
   const [isDeactivating, setIsDeactivating] = useState(false);
@@ -25,12 +28,11 @@ export default function Settings() {
   async function handleProfileSubmit(e: FormEvent) {
     e.preventDefault();
     setProfileError(null);
-    setProfileSuccess(false);
     setIsSavingProfile(true);
     try {
       await updateProfile({ name, mail });
       await refreshUser();
-      setProfileSuccess(true);
+      toast.success("Perfil actualizado.");
     } catch (err: any) {
       if (err?.response?.status === 400) {
         setProfileError("Ese correo ya está en uso.");
@@ -45,10 +47,10 @@ export default function Settings() {
   async function handlePasswordSubmit(e: FormEvent) {
     e.preventDefault();
     setPasswordError(null);
-    setPasswordSuccess(false);
 
-    if (newPassword.length < 8) {
-      setPasswordError("La contraseña debe tener al menos 8 caracteres.");
+    const weakness = validatePasswordStrength(newPassword);
+    if (weakness) {
+      setPasswordError(weakness);
       return;
     }
     if (newPassword !== confirmPassword) {
@@ -62,7 +64,7 @@ export default function Settings() {
       setCurrentPassword("");
       setNewPassword("");
       setConfirmPassword("");
-      setPasswordSuccess(true);
+      toast.success("Contraseña actualizada.");
     } catch (err: any) {
       if (err?.response?.status === 400) {
         setPasswordError("La contraseña actual es incorrecta.");
@@ -84,14 +86,17 @@ export default function Settings() {
       await logout();
       navigate("/");
     } catch {
-      alert("No se pudo desactivar la cuenta.");
+      toast.error("No se pudo desactivar la cuenta.");
       setIsDeactivating(false);
     }
   }
 
   return (
     <div className="max-w-xl">
-      <h1 className="text-2xl font-semibold text-ink-light dark:text-ink-dark mb-6">Configuración</h1>
+      <div className="flex items-center justify-between mb-6">
+        <h1 className="text-2xl font-semibold text-ink-light dark:text-ink-dark">Configuración</h1>
+        <NotificationBell align="right" />
+      </div>
 
       {/* Perfil */}
       <section className="rounded-xl border border-line-light dark:border-line-dark bg-surface-elevated-light dark:bg-surface-elevated-dark p-5 mb-6">
@@ -118,7 +123,6 @@ export default function Settings() {
           </div>
 
           {profileError && <p className="text-sm text-negative">{profileError}</p>}
-          {profileSuccess && <p className="text-sm text-positive">Perfil actualizado.</p>}
 
           <button
             type="submit"
@@ -154,6 +158,7 @@ export default function Settings() {
               required
               className="w-full px-3 py-2 rounded-lg border border-line-light dark:border-line-dark bg-transparent focus:outline-none focus:ring-2 focus:ring-accent"
             />
+            <p className="mt-1 text-xs text-ink-muted-light dark:text-ink-muted-dark">{PASSWORD_REQUIREMENTS}</p>
           </div>
           <div>
             <label className="block text-sm font-medium mb-1 text-ink-light dark:text-ink-dark">Confirmar contraseña</label>
@@ -167,7 +172,6 @@ export default function Settings() {
           </div>
 
           {passwordError && <p className="text-sm text-negative">{passwordError}</p>}
-          {passwordSuccess && <p className="text-sm text-positive">Contraseña actualizada.</p>}
 
           <button
             type="submit"

@@ -69,11 +69,11 @@ class Transaction(SQLModel, table=True):
         )
     )
 
-    description: str = Field(
+    description: Optional[str] = Field(
     	default=None,
         sa_column=Column(
         	String(250),
-         	nullable=False
+         	nullable=True
         )
     )
 

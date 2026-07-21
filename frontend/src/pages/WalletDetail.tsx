@@ -1,26 +1,34 @@
 import { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
-import { ArrowLeft, Pencil, TrendingUp, TrendingDown, Wallet as WalletIcon } from "lucide-react";
+import { ArrowLeft, Pencil, Settings2, TrendingUp, TrendingDown, Wallet as WalletIcon } from "lucide-react";
 import { getWallet, updateWallet } from "../api/wallets";
 import { listCategories } from "../api/categories";
 import { useWalletTransactions } from "../hooks/useWalletTransactions";
 import { WalletFormModal } from "../components/wallets/WalletFormModal";
+import { WalletRulesPanel } from "../components/wallets/WalletRulesPanel";
 import { MonthlyChart } from "../components/transactions/MonthlyChart";
 import { CategoryPieChart } from "../components/transactions/CategoryPieChart";
 import { TransactionTable } from "../components/transactions/TransactionTable";
+import { TransactionFilters, EMPTY_FILTERS, applyFilters } from "../components/transactions/TransactionFilters";
+import type { TxFilters } from "../components/transactions/TransactionFilters";
 import { SummaryCard } from "../components/dashboard/SummaryCard";
+import { NotificationBell } from "../components/notifications/NotificationBell";
+import { useToast } from "../context/ToastContext";
 import { formatCurrency } from "../utils/date";
 import type { Wallet, Category } from "../types";
 
 export default function WalletDetail() {
   const { walletId } = useParams<{ walletId: string }>();
   const navigate = useNavigate();
+  const { toast } = useToast();
 
   const [wallet, setWallet] = useState<Wallet | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
   const [isLoadingWallet, setIsLoadingWallet] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
+  const [rulesOpen, setRulesOpen] = useState(false);
+  const [filters, setFilters] = useState<TxFilters>(EMPTY_FILTERS);
 
   const { transactions, isLoading: isLoadingTransactions, error } = useWalletTransactions(
     walletId ?? "",
@@ -49,6 +57,7 @@ export default function WalletDetail() {
     if (!walletId) return;
     await updateWallet(walletId, payload);
     await loadWallet();
+    toast.success("Cartera actualizada.");
   }
 
   if (isLoadingWallet) {
@@ -72,6 +81,15 @@ export default function WalletDetail() {
   const totalExpenses = expenseTransactions.reduce((sum, t) => sum + t.amount, 0);
   const balance = totalIncome - totalExpenses;
 
+  // El filtro de categoría solo ofrece las categorías presentes en esta cartera.
+  const presentCategoryIds = new Set(transactions.map((t) => t.category_id));
+  const categoryOptions = categories
+    .filter((c) => presentCategoryIds.has(c.id))
+    .sort((a, b) => a.name.localeCompare(b.name));
+
+  // Filtrado client-side: SOLO afecta la tabla, no las gráficas ni las tarjetas.
+  const filteredTransactions = applyFilters(transactions, filters);
+
   return (
     <div>
       <button
@@ -89,14 +107,32 @@ export default function WalletDetail() {
             <p className="text-sm text-ink-muted-light dark:text-ink-muted-dark mt-1">{wallet.description}</p>
           )}
         </div>
-        <button
-          onClick={() => setModalOpen(true)}
-          className="flex items-center gap-2 px-4 py-2 rounded-lg border border-line-light dark:border-line-dark text-ink-light dark:text-ink-dark hover:border-accent"
-        >
-          <Pencil size={16} />
-          Editar
-        </button>
+        <div className="flex items-center gap-2 shrink-0">
+          <NotificationBell align="right" />
+          {!wallet.is_default && (
+            <button
+              onClick={() => setRulesOpen((v) => !v)}
+              className="flex items-center gap-2 px-4 py-2 rounded-lg border border-line-light dark:border-line-dark text-ink-light dark:text-ink-dark hover:border-accent"
+            >
+              <Settings2 size={16} />
+              {rulesOpen ? "Ocultar reglas" : "Gestionar reglas"}
+            </button>
+          )}
+          <button
+            onClick={() => setModalOpen(true)}
+            className="flex items-center gap-2 px-4 py-2 rounded-lg border border-line-light dark:border-line-dark text-ink-light dark:text-ink-dark hover:border-accent"
+          >
+            <Pencil size={16} />
+            Editar
+          </button>
+        </div>
       </div>
+
+      {!wallet.is_default && rulesOpen && (
+        <div className="mb-6">
+          <WalletRulesPanel wallet={wallet} onClose={() => setRulesOpen(false)} />
+        </div>
+      )}
 
       {error && <p className="text-negative mb-4">{error}</p>}
 
@@ -125,7 +161,14 @@ export default function WalletDetail() {
             <CategoryPieChart transactions={expenseTransactions} categories={categories} title="Egresos por categoría" />
           </div>
 
-          <TransactionTable transactions={transactions} categories={categories} />
+          <TransactionFilters
+            filters={filters}
+            onChange={setFilters}
+            categories={categoryOptions}
+            resultCount={filteredTransactions.length}
+            totalCount={transactions.length}
+          />
+          <TransactionTable transactions={filteredTransactions} categories={categories} />
         </>
       )}
 

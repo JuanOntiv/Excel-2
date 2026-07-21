@@ -1,11 +1,12 @@
-import { useState, useEffect, FormEvent } from "react";
+import { useState, useEffect } from "react";
+import type { FormEvent } from "react";
 import { X } from "lucide-react";
 import { listCategories } from "../../api/categories";
 import type { WalletRule, WalletRuleType, TransactionType, Category } from "../../types";
 import type { WalletRulePayload } from "../../api/walletRules";
+import { sanitizeAmountInput } from "../../utils/numberInput";
 
 interface Props {
-  walletId: string;
   rule: WalletRule | null;
   onClose: () => void;
   onSubmit: (payload: Omit<WalletRulePayload, "wallet_id">) => Promise<void>;
@@ -19,7 +20,7 @@ const ruleTypeLabels: Record<WalletRuleType, string> = {
   AmountRange: "Rango de monto",
 };
 
-export function WalletRuleFormModal({ walletId, rule, onClose, onSubmit }: Props) {
+export function WalletRuleFormModal({ rule, onClose, onSubmit }: Props) {
   const [categories, setCategories] = useState<Category[]>([]);
   const [ruleType, setRuleType] = useState<WalletRuleType>(rule?.rule_type ?? "Category");
   const [categoryId, setCategoryId] = useState(rule?.category_id ?? "");
@@ -162,11 +163,11 @@ export function WalletRuleFormModal({ walletId, rule, onClose, onSubmit }: Props
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="block text-sm font-medium mb-1 text-ink-light dark:text-ink-dark">Monto mínimo</label>
-                <input type="number" step="0.01" min="0" value={amountFrom} onChange={(e) => setAmountFrom(e.target.value)} className="w-full px-3 py-2 rounded-lg border border-line-light dark:border-line-dark bg-transparent focus:outline-none focus:ring-2 focus:ring-accent" />
+                <input type="number" step="0.01" min="0" value={amountFrom} onChange={(e) => setAmountFrom(sanitizeAmountInput(e.target.value))} className="w-full px-3 py-2 rounded-lg border border-line-light dark:border-line-dark bg-transparent focus:outline-none focus:ring-2 focus:ring-accent" />
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1 text-ink-light dark:text-ink-dark">Monto máximo</label>
-                <input type="number" step="0.01" min="0" value={amountTo} onChange={(e) => setAmountTo(e.target.value)} className="w-full px-3 py-2 rounded-lg border border-line-light dark:border-line-dark bg-transparent focus:outline-none focus:ring-2 focus:ring-accent" />
+                <input type="number" step="0.01" min="0" value={amountTo} onChange={(e) => setAmountTo(sanitizeAmountInput(e.target.value))} className="w-full px-3 py-2 rounded-lg border border-line-light dark:border-line-dark bg-transparent focus:outline-none focus:ring-2 focus:ring-accent" />
               </div>
             </div>
           )}
