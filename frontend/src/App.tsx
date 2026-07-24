@@ -19,6 +19,7 @@ import Categories from "./pages/Categories";
 import Wallets from "./pages/Wallets";
 import WalletDetail from "./pages/WalletDetail";
 import Goals from "./pages/Goals";
+import History from "./pages/History";
 import Admin from "./pages/Admin";
 import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
@@ -132,6 +133,16 @@ function App() {
                 <ProtectedRoute>
                   <AppShell>
                     <WalletDetail />
+                  </AppShell>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/history"
+              element={
+                <ProtectedRoute>
+                  <AppShell>
+                    <History />
                   </AppShell>
                 </ProtectedRoute>
               }

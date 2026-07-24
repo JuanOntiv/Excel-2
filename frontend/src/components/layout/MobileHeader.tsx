@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { Settings, Moon, Sun } from "lucide-react";
+import { Settings, Moon, Sun, History } from "lucide-react";
 import { useTheme } from "../../context/ThemeContext";
 import { useAuth } from "../../context/AuthContext";
 import { NotificationBell } from "../notifications/NotificationBell";
@@ -26,6 +26,9 @@ export function MobileHeader() {
         >
           {theme === "dark" ? <Sun size={15} /> : <Moon size={15} />}
         </button>
+        <Link to="/history" className="text-ink-muted-light dark:text-ink-muted-dark">
+          <History size={18} />
+        </Link>
         <Link to="/settings" className="text-ink-muted-light dark:text-ink-muted-dark">
           <Settings size={18} />
         </Link>

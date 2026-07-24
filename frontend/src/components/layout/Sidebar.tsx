@@ -15,6 +15,7 @@ import {
   ChevronRight,
   Tag,
   PiggyBank,
+  History,
 } from "lucide-react";
 import { useTheme } from "../../context/ThemeContext";
 import { useAuth } from "../../context/AuthContext";
@@ -145,6 +146,19 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
               <p className="text-[15px] font-semibold truncate text-ink-light dark:text-ink-dark">{user?.name}</p>
               <p className="text-sm text-ink-muted-light dark:text-ink-muted-dark truncate">{user?.mail}</p>
             </div>
+            <NavLink
+              to="/history"
+              className={({ isActive }) =>
+                `p-2 rounded-lg shrink-0 ${
+                  isActive
+                    ? "bg-accent text-white"
+                    : "text-ink-muted-light dark:text-ink-muted-dark hover:bg-surface-light dark:hover:bg-surface-dark hover:text-ink-light dark:hover:text-ink-dark"
+                }`
+              }
+              title="Historial"
+            >
+              <History size={18} />
+            </NavLink>
             <NavLink
               to="/settings"
               className={({ isActive }) =>

@@ -145,3 +145,16 @@ export interface AppNotification {
   created_at: string;
   read_at: string | null;
 }
+
+export type LogAction = "CREATE" | "READ" | "UPDATE" | "DELETE" | "LOGIN" | "LOGOUT";
+export type LogLevel = "INFO" | "WARNING" | "ERROR" | "SECURITY";
+
+export interface ActivityLog {
+  id: string;
+  user_id: string | null;
+  action: LogAction;
+  level: LogLevel;
+  table: string | null;
+  detail: string | null;
+  created_at: string;
+}
