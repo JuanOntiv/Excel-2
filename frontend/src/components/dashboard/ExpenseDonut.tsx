@@ -1,4 +1,6 @@
-import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from "recharts";
+import { PieChart, Pie, Cell, Sector, Tooltip, ResponsiveContainer } from "recharts";
+import type { PieSectorShapeProps } from "recharts";
+import { Star } from "lucide-react";
 import { formatCurrency } from "../../utils/date";
 import { ChartTooltip } from "../charts/ChartTooltip";
 import type { Transaction, Category } from "../../types";
@@ -12,6 +14,14 @@ interface Props {
 // Mismo fallback que las otras gráficas: una categoría sin color propio se ve
 // igual en toda la app.
 const FALLBACK_COLORS = ["#2563eb", "#2dd4bf", "#dc2626", "#a855f7", "#f59e0b", "#059669", "#ec4899", "#78716c"];
+
+// La categoría con mayor monto (índice 0, ya que `data` viene ordenado desc) se
+// resalta afinando muy ligeramente el resto de las porciones, no ella misma.
+const OTHER_SLICES_TRIM = 3;
+
+function renderSlice({ index, outerRadius, ...rest }: PieSectorShapeProps) {
+  return <Sector {...rest} outerRadius={index === 0 ? outerRadius : Number(outerRadius) - OTHER_SLICES_TRIM} />;
+}
 
 export function ExpenseDonut({ transactions, categories, title = "Distribución de gastos" }: Props) {
   const totals = new Map<string, number>();
@@ -47,9 +57,9 @@ export function ExpenseDonut({ transactions, categories, title = "Distribución 
         <div className="relative shrink-0" style={{ width: 220, height: 220 }}>
           <ResponsiveContainer width="100%" height="100%">
             <PieChart>
-              <Pie data={data} dataKey="value" nameKey="name" innerRadius={72} outerRadius={105} paddingAngle={2}>
+              <Pie data={data} dataKey="value" nameKey="name" innerRadius={72} outerRadius={105} paddingAngle={2} shape={renderSlice}>
                 {data.map((entry, i) => (
-                  <Cell key={i} fill={entry.color} />
+                  <Cell key={i} fill={entry.color} stroke={i === 0 ? entry.color : "none"} strokeWidth={i === 0 ? 3 : 0} />
                 ))}
               </Pie>
               <Tooltip content={<ChartTooltip />} />
@@ -64,12 +74,21 @@ export function ExpenseDonut({ transactions, categories, title = "Distribución 
         {/* Leyenda a la derecha: nombre + monto por categoría */}
         <ul className="flex-1 min-w-0 flex flex-col gap-3 max-h-[220px] overflow-y-auto">
           {data.map((d, i) => (
-            <li key={i} className="flex items-center justify-between gap-2 text-[15px]">
+            <li
+              key={i}
+              className="flex items-center justify-between gap-2 text-[15px] rounded-lg px-2 py-1"
+              style={{ backgroundColor: i === 0 ? `color-mix(in srgb, ${d.color} 16%, transparent)` : undefined }}
+            >
               <span className="flex items-center gap-2 min-w-0">
                 <span className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: d.color }} />
-                <span className="truncate font-medium text-ink-light dark:text-ink-dark">{d.name}</span>
+                <span className={`truncate text-ink-light dark:text-ink-dark ${i === 0 ? "font-semibold" : "font-medium"}`}>
+                  {d.name}
+                </span>
+                {i === 0 && <Star size={13} className="shrink-0" style={{ color: d.color, fill: d.color }} />}
               </span>
-              <span className="text-ink-muted-light dark:text-ink-muted-dark shrink-0 font-medium">{formatCurrency(d.value)}</span>
+              <span className={`shrink-0 ${i === 0 ? "font-semibold text-ink-light dark:text-ink-dark" : "font-medium text-ink-muted-light dark:text-ink-muted-dark"}`}>
+                {formatCurrency(d.value)}
+              </span>
             </li>
           ))}
         </ul>

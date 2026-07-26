@@ -217,6 +217,7 @@ export function TransactionsView({ type }: { type: TransactionType }) {
             <SummaryCard
               label="Mayor movimiento"
               value={highest ? formatCurrency(highest.amount) : "—"}
+              subtitle={highest ? `${highest.name} · ${new Date(highest.date).toLocaleDateString("es-MX")}` : null}
               icon={<Trophy size={20} />}
             />
             <SummaryCard

@@ -61,7 +61,7 @@ export function TransactionFilters({ filters, onChange, categories, resultCount,
   return (
     <div className="rounded-xl border border-line-light dark:border-line-dark bg-surface-elevated-light dark:bg-surface-elevated-dark p-4 mb-4">
       <div className="flex flex-wrap items-end gap-3">
-        {/* Buscar por nombre */}
+        {/* Buscar por concepto */}
         <div className="flex-1 min-w-[180px]">
           <label className={labelClass}>Buscar</label>
           <div className="relative">
@@ -69,7 +69,7 @@ export function TransactionFilters({ filters, onChange, categories, resultCount,
             <input
               value={filters.name}
               onChange={(e) => set({ name: e.target.value })}
-              placeholder="Nombre..."
+              placeholder="Concepto..."
               className={`${inputClass} w-full pl-9`}
             />
           </div>

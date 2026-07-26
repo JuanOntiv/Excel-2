@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from "recharts";
-import { X } from "lucide-react";
+import { PieChart, Pie, Cell, Sector, Tooltip, ResponsiveContainer } from "recharts";
+import type { PieSectorShapeProps } from "recharts";
+import { X, Star } from "lucide-react";
 import { formatCurrency } from "../../utils/date";
 import { ChartTooltip } from "./ChartTooltip";
 import type { Transaction, Category } from "../../types";
@@ -13,6 +14,14 @@ interface Props {
 
 const FALLBACK_COLORS = ["#2563eb", "#2dd4bf", "#dc2626", "#a855f7", "#f59e0b", "#059669", "#ec4899", "#78716c"];
 
+// La categoría con mayor monto (índice 0, ya que `data` viene ordenado desc) se
+// resalta afinando muy ligeramente el resto de las porciones, no ella misma.
+const OTHER_SLICES_TRIM = 3;
+
+function renderSlice({ index, outerRadius, ...rest }: PieSectorShapeProps) {
+  return <Sector {...rest} outerRadius={index === 0 ? outerRadius : Number(outerRadius) - OTHER_SLICES_TRIM} />;
+}
+
 // Cuántas categorías se muestran en la leyenda lateral antes de ofrecer "Ver detalle".
 const LEGEND_LIMIT = 6;
 
@@ -22,14 +31,20 @@ interface Slice {
   color: string;
 }
 
-function LegendRow({ slice }: { slice: Slice }) {
+function LegendRow({ slice, isTop }: { slice: Slice; isTop?: boolean }) {
   return (
-    <li className="flex items-center justify-between gap-2 text-[15px]">
+    <li
+      className="flex items-center justify-between gap-2 text-[15px] rounded-lg px-2 py-1"
+      style={{ backgroundColor: isTop ? `color-mix(in srgb, ${slice.color} 16%, transparent)` : undefined }}
+    >
       <span className="flex items-center gap-2 min-w-0">
         <span className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: slice.color }} />
-        <span className="truncate font-medium text-ink-light dark:text-ink-dark">{slice.name}</span>
+        <span className={`truncate text-ink-light dark:text-ink-dark ${isTop ? "font-semibold" : "font-medium"}`}>
+          {slice.name}
+        </span>
+        {isTop && <Star size={13} className="shrink-0" style={{ color: slice.color, fill: slice.color }} />}
       </span>
-      <span className="text-ink-muted-light dark:text-ink-muted-dark shrink-0 font-medium">
+      <span className={`shrink-0 ${isTop ? "font-semibold text-ink-light dark:text-ink-dark" : "font-medium text-ink-muted-light dark:text-ink-muted-dark"}`}>
         {formatCurrency(slice.value)}
       </span>
     </li>
@@ -75,9 +90,9 @@ export function CategoryDonut({ transactions, categories, title = "Por categorí
         <div className="relative shrink-0" style={{ width: 230, height: 230 }}>
           <ResponsiveContainer width="100%" height="100%">
             <PieChart>
-              <Pie data={data} dataKey="value" nameKey="name" innerRadius={76} outerRadius={110} paddingAngle={2}>
+              <Pie data={data} dataKey="value" nameKey="name" innerRadius={76} outerRadius={110} paddingAngle={2} shape={renderSlice}>
                 {data.map((entry, i) => (
-                  <Cell key={i} fill={entry.color} />
+                  <Cell key={i} fill={entry.color} stroke={i === 0 ? entry.color : "none"} strokeWidth={i === 0 ? 3 : 0} />
                 ))}
               </Pie>
               <Tooltip content={<ChartTooltip />} />
@@ -93,7 +108,7 @@ export function CategoryDonut({ transactions, categories, title = "Por categorí
         <div className="flex-1 min-w-0">
           <ul className="flex flex-col gap-3">
             {visible.map((d, i) => (
-              <LegendRow key={i} slice={d} />
+              <LegendRow key={i} slice={d} isTop={i === 0} />
             ))}
           </ul>
           {hasMore && (
@@ -121,10 +136,17 @@ export function CategoryDonut({ transactions, categories, title = "Por categorí
             </p>
             <ul className="flex flex-col gap-3">
               {data.map((d, i) => (
-                <li key={i} className="flex items-center justify-between gap-2 text-[15px]">
+                <li
+                  key={i}
+                  className="flex items-center justify-between gap-2 text-[15px] rounded-lg px-2 py-1"
+                  style={{ backgroundColor: i === 0 ? `color-mix(in srgb, ${d.color} 16%, transparent)` : undefined }}
+                >
                   <span className="flex items-center gap-2 min-w-0">
                     <span className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: d.color }} />
-                    <span className="truncate font-medium text-ink-light dark:text-ink-dark">{d.name}</span>
+                    <span className={`truncate text-ink-light dark:text-ink-dark ${i === 0 ? "font-semibold" : "font-medium"}`}>
+                      {d.name}
+                    </span>
+                    {i === 0 && <Star size={13} className="shrink-0" style={{ color: d.color, fill: d.color }} />}
                   </span>
                   <span className="shrink-0 text-ink-muted-light dark:text-ink-muted-dark">
                     {formatCurrency(d.value)}{" "}

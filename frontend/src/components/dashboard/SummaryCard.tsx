@@ -12,6 +12,8 @@ interface SummaryCardProps {
   delta?: number | null;
   /** Si subir es "bueno" (ingresos, balance) o "malo" (egresos). undefined = neutral. */
   higherIsBetter?: boolean;
+  /** Texto adicional bajo el valor, ej. nombre y fecha del movimiento destacado. */
+  subtitle?: string | null;
 }
 
 const valueTone: Record<Tone, string> = {
@@ -63,13 +65,16 @@ function DeltaRow({ delta, higherIsBetter }: { delta?: number | null; higherIsBe
   );
 }
 
-export function SummaryCard({ label, value, icon, tone = "neutral", delta, higherIsBetter }: SummaryCardProps) {
+export function SummaryCard({ label, value, icon, tone = "neutral", delta, higherIsBetter, subtitle }: SummaryCardProps) {
   return (
     <div className="rounded-xl border border-line-light dark:border-line-dark bg-surface-elevated-light dark:bg-surface-elevated-dark p-5">
       <div className="flex items-start justify-between">
         <div>
           <p className="text-[15px] font-medium text-ink-muted-light dark:text-ink-muted-dark mb-1">{label}</p>
           <p className={`text-3xl font-bold font-mono tabular-nums ${valueTone[tone]}`}>{value}</p>
+          {subtitle && (
+            <p className="mt-1 text-sm text-ink-muted-light dark:text-ink-muted-dark truncate">{subtitle}</p>
+          )}
         </div>
         <div className={`w-11 h-11 rounded-full flex items-center justify-center shrink-0 ${iconTone[tone]}`}>
           {icon}

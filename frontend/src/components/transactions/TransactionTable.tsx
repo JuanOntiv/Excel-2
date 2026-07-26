@@ -41,7 +41,7 @@ export function TransactionTable({ transactions, categories, onEdit, onDelete }:
       <table className="w-full text-sm">
         <thead>
           <tr className="border-b border-line-light dark:border-line-dark text-left text-ink-muted-light dark:text-ink-muted-dark">
-            <th className="px-4 py-3 font-medium">Nombre</th>
+            <th className="px-4 py-3 font-medium">Concepto</th>
             <th className="px-4 py-3 font-medium">Categoría</th>
             <th className="px-4 py-3 font-medium">Fecha</th>
             <th className="px-4 py-3 font-medium text-right">Monto</th>
