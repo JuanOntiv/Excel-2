@@ -2,6 +2,7 @@ import { useState } from "react";
 import type { FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { useConfirm } from "../context/ConfirmContext";
 import { useToast } from "../context/ToastContext";
 import { updateProfile, deactivateAccount, changePassword } from "../api/users";
 import { NotificationBell } from "../components/notifications/NotificationBell";
@@ -10,6 +11,7 @@ import { validatePasswordStrength, PASSWORD_REQUIREMENTS } from "../utils/passwo
 export default function Settings() {
   const { user, refreshUser, logout } = useAuth();
   const { toast } = useToast();
+  const confirm = useConfirm();
   const navigate = useNavigate();
 
   const [name, setName] = useState(user?.name ?? "");
@@ -77,9 +79,11 @@ export default function Settings() {
   }
 
   async function handleDeactivate() {
-    if (!confirm("¿Desactivar tu cuenta? Podrás recuperarla contactando soporte, pero perderás acceso inmediato.")) {
-      return;
-    }
+    const ok = await confirm({
+      message: "¿Desactivar tu cuenta? Podrás recuperarla contactando soporte, pero perderás acceso inmediato.",
+      tone: "danger",
+    });
+    if (!ok) return;
     setIsDeactivating(true);
     try {
       await deactivateAccount();

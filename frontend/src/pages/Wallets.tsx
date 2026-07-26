@@ -1,21 +1,22 @@
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { Plus, Pencil, Trash2, Star, Settings2 } from "lucide-react";
+import { Plus, Pencil, Trash2, Star } from "lucide-react";
 import { listWallets, createWallet, updateWallet, deleteWallet } from "../api/wallets";
 import { WalletFormModal } from "../components/wallets/WalletFormModal";
 import { WalletRulesPanel } from "../components/wallets/WalletRulesPanel";
 import { NotificationBell } from "../components/notifications/NotificationBell";
+import { useConfirm } from "../context/ConfirmContext";
 import { useToast } from "../context/ToastContext";
 import type { Wallet } from "../types";
 
 export default function Wallets() {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const confirm = useConfirm();
   const [wallets, setWallets] = useState<Wallet[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<Wallet | null>(null);
-  const [expandedWalletId, setExpandedWalletId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setIsLoading(true);
@@ -52,19 +53,14 @@ export default function Wallets() {
   }
 
   async function handleDelete(w: Wallet) {
-    if (!confirm(`¿Eliminar "${w.name}"?`)) return;
+    if (!(await confirm({ message: `¿Eliminar "${w.name}"?`, tone: "danger" }))) return;
     try {
       await deleteWallet(w.id);
-      if (expandedWalletId === w.id) setExpandedWalletId(null);
       await load();
       toast.success("Cartera eliminada.");
     } catch {
       toast.error("No se pudo eliminar la cartera.");
     }
-  }
-
-  function toggleRules(w: Wallet) {
-    setExpandedWalletId((current) => (current === w.id ? null : w.id));
   }
 
   if (isLoading) return <p className="text-ink-muted-light dark:text-ink-muted-dark">Cargando carteras...</p>;
@@ -113,21 +109,21 @@ export default function Wallets() {
               <p className="text-sm text-ink-muted-light dark:text-ink-muted-dark mb-3">{w.description}</p>
             )}
 
-            {!w.is_default && (
-              <div onClick={(e) => e.stopPropagation()}>
-                <button
-                  onClick={() => toggleRules(w)}
-                  className="flex items-center gap-1 text-sm text-accent hover:opacity-80"
-                >
-                  <Settings2 size={14} />
-                  {expandedWalletId === w.id ? "Ocultar reglas" : "Gestionar reglas"}
-                </button>
+            <div onClick={(e) => e.stopPropagation()}>
+              {w.is_default ? (
+                <div className="rounded-xl border border-line-light dark:border-line-dark bg-surface-elevated-light dark:bg-surface-elevated-dark p-5 mt-4">
+                  <h3 className="text-sm font-medium text-ink-light dark:text-ink-dark mb-1">
+                    Reglas de "{w.name}"
+                  </h3>
+                  <p className="text-sm text-ink-muted-light dark:text-ink-muted-dark">
+                    Incluye todas tus transacciones automáticamente. No usa reglas.
+                  </p>
+                </div>
+              ) : (
+                <WalletRulesPanel wallet={w} />
+              )}
+            </div>
 
-                {expandedWalletId === w.id && (
-                  <WalletRulesPanel wallet={w} onClose={() => setExpandedWalletId(null)} />
-                )}
-              </div>
-            )}
           </div>
         ))}
       </div>

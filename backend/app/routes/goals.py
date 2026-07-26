@@ -190,4 +190,4 @@ def deactivate_goal(
     goal.updated_at = datetime.now()
     session.add(goal)
     session.commit()
-    return {"message": "Goal deactivated successfully"}
+    return {"message": "Goal deactivated successfully", "name": goal.name}

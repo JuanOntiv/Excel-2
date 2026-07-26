@@ -28,6 +28,21 @@ class AdminResetPasswordRequest(BaseModel):
     new_password: str
 
 
+# Estas rutas devuelven un dict de mensaje (no la entidad), asi que el
+# detalle del log se describe explicitamente en vez de sacarlo de .name.
+def _own_password_detail(result, kwargs):
+    return "Contraseña de la cuenta"
+
+
+def _reset_password_detail(result, kwargs):
+    session = kwargs.get("session")
+    user_id = kwargs.get("user_id")
+    if session is None or user_id is None:
+        return None
+    user = session.get(User, user_id)
+    return f'Contraseña de "{user.name}"' if user else None
+
+
 @router.post("/register", response_model=UserRead, status_code=status.HTTP_201_CREATED)
 @log_action(action=LogAction.CREATE, table="users")
 def register_user(
@@ -98,7 +113,7 @@ def update_my_profile(
 
 
 @router.post("/me/change-password", status_code=status.HTTP_200_OK)
-@log_action(action=LogAction.UPDATE, table="users")
+@log_action(action=LogAction.UPDATE, table="users", detail_fn=_own_password_detail)
 def change_my_password(
     body: ChangePasswordRequest,
     session: Session = Depends(get_session),
@@ -135,7 +150,7 @@ def deactivate_my_account(
     current_user.updated_at = datetime.now()
     session.add(current_user)
     session.commit()
-    return {"message": "Account deactivated successfully"}
+    return {"message": "Account deactivated successfully", "name": current_user.name}
 
 
 # =========================================================
@@ -189,7 +204,7 @@ def deactivate_user_admin(
     user.updated_at = datetime.now()
     session.add(user)
     session.commit()
-    return {"message": "User deactivated successfully", "user_id": str(user_id)}
+    return {"message": "User deactivated successfully", "user_id": str(user_id), "name": user.name}
 
 
 @router.post("/{user_id}/reactivate", status_code=status.HTTP_200_OK)
@@ -209,11 +224,11 @@ def reactivate_user_admin(
     user.updated_at = datetime.now()
     session.add(user)
     session.commit()
-    return {"message": "User reactivated successfully", "user_id": str(user_id)}
+    return {"message": "User reactivated successfully", "user_id": str(user_id), "name": user.name}
 
 
 @router.post("/{user_id}/reset-password", status_code=status.HTTP_200_OK)
-@log_action(action=LogAction.UPDATE, level=LogLevel.WARNING, table="users")
+@log_action(action=LogAction.UPDATE, level=LogLevel.WARNING, table="users", detail_fn=_reset_password_detail)
 def reset_user_password_admin(
     user_id: UUID,
     body: AdminResetPasswordRequest,
@@ -307,6 +322,7 @@ def hard_delete_user_admin(
     for log in session.exec(select(Log).where(Log.user_id == user_id)).all():
         session.delete(log)
 
+    deleted_name = user.name
     session.delete(user)
     session.commit()
-    return {"message": "User permanently deleted", "user_id": str(user_id)}
+    return {"message": "User permanently deleted", "user_id": str(user_id), "name": deleted_name}

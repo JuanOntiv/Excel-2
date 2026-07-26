@@ -9,11 +9,14 @@ import {
   cancelGoal,
 } from "../api/goals";
 import type { GoalPayload } from "../api/goals";
+import { listWallets } from "../api/wallets";
+import { listCategories } from "../api/categories";
 import { GoalFormModal } from "../components/goals/GoalFormModal";
 import { NotificationBell } from "../components/notifications/NotificationBell";
+import { useConfirm } from "../context/ConfirmContext";
 import { useToast } from "../context/ToastContext";
 import { formatCurrency } from "../utils/date";
-import type { Goal, GoalProgress, GoalType, GoalStatus } from "../types";
+import type { Goal, GoalProgress, GoalType, GoalStatus, Wallet, Category } from "../types";
 
 const TYPE_LABELS: Record<GoalType, string> = {
   income: "Meta de ingresos",
@@ -30,7 +33,10 @@ const STATUS_LABELS: Record<GoalStatus, string> = {
 
 export default function Goals() {
   const { toast } = useToast();
+  const confirm = useConfirm();
   const [goals, setGoals] = useState<GoalProgress[]>([]);
+  const [wallets, setWallets] = useState<Wallet[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<Goal | null>(null);
@@ -48,7 +54,12 @@ export default function Goals() {
 
   useEffect(() => {
     load();
+    listWallets().then(setWallets).catch(() => setWallets([]));
+    listCategories(true).then(setCategories).catch(() => setCategories([]));
   }, [load]);
+
+  const walletName = useCallback((id: string | null) => wallets.find((w) => w.id === id)?.name, [wallets]);
+  const categoryName = useCallback((id: string | null) => categories.find((c) => c.id === id)?.name, [categories]);
 
   function openCreate() {
     setEditing(null);
@@ -71,7 +82,7 @@ export default function Goals() {
   }
 
   async function handleDelete(g: Goal) {
-    if (!confirm(`¿Eliminar "${g.name}"?`)) return;
+    if (!(await confirm({ message: `¿Eliminar "${g.name}"?`, tone: "danger" }))) return;
     try {
       await deleteGoal(g.id);
       await load();
@@ -82,7 +93,7 @@ export default function Goals() {
   }
 
   async function handleCancel(g: Goal) {
-    if (!confirm(`¿Cancelar la meta "${g.name}"?`)) return;
+    if (!(await confirm(`¿Cancelar la meta "${g.name}"?`))) return;
     try {
       await cancelGoal(g.id);
       await load();
@@ -116,6 +127,8 @@ export default function Goals() {
           <GoalCard
             key={g.id}
             goal={g}
+            walletName={walletName(g.wallet_id)}
+            categoryName={categoryName(g.category_id)}
             onEdit={() => openEdit(g)}
             onDelete={() => handleDelete(g)}
             onCancel={() => handleCancel(g)}
@@ -136,12 +149,14 @@ export default function Goals() {
 
 interface GoalCardProps {
   goal: GoalProgress;
+  walletName?: string;
+  categoryName?: string;
   onEdit: () => void;
   onDelete: () => void;
   onCancel: () => void;
 }
 
-function GoalCard({ goal, onEdit, onDelete, onCancel }: GoalCardProps) {
+function GoalCard({ goal, walletName, categoryName, onEdit, onDelete, onCancel }: GoalCardProps) {
   const pct = Math.max(0, Math.min(100, goal.percentage));
   // Para límites de gasto, acercarse/rebasar el tope es "malo" (rojo);
   // para ingresos/ahorro, avanzar hacia la meta es "bueno" (verde/acento).
@@ -196,8 +211,16 @@ function GoalCard({ goal, onEdit, onDelete, onCancel }: GoalCardProps) {
         </span>
       </div>
 
-      <p className="mt-2 text-xs text-ink-muted-light dark:text-ink-muted-dark">
-        {goal.start_date} — {goal.end_date}
+      {(walletName || categoryName) && (
+        <p className="mt-2 text-xs text-ink-muted-light dark:text-ink-muted-dark">
+          {[walletName && `Cartera: ${walletName}`, categoryName && `Categoría: ${categoryName}`]
+            .filter(Boolean)
+            .join(" · ")}
+        </p>
+      )}
+
+      <p className="mt-1 text-xs text-ink-muted-light dark:text-ink-muted-dark">
+        {new Date(goal.start_date).toLocaleDateString("es-MX")} — {new Date(goal.end_date).toLocaleDateString("es-MX")}
       </p>
     </div>
   );

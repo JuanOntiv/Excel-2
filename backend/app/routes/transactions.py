@@ -317,4 +317,4 @@ def deactivate_transaction(
     trx.updated_at = datetime.now()
     session.add(trx)
     session.commit()
-    return {"message": "Transaction deactivated"}
+    return {"message": "Transaction deactivated", "name": trx.name}

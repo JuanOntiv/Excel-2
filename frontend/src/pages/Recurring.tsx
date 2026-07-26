@@ -15,11 +15,13 @@ import { RecurringTable } from "../components/recurring/RecurringTable";
 import { RecurringFormModal } from "../components/recurring/RecurringFormModal";
 import { PendingConfirmationBanner } from "../components/recurring/PendingConfirmationBanner";
 import { NotificationBell } from "../components/notifications/NotificationBell";
+import { useConfirm } from "../context/ConfirmContext";
 import { useToast } from "../context/ToastContext";
 import type { RecurringTransaction, Category } from "../types";
 
 export default function Recurring() {
   const { toast } = useToast();
+  const confirm = useConfirm();
   const [items, setItems] = useState<RecurringTransaction[]>([]);
   const [pending, setPending] = useState<RecurringTransaction[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -88,7 +90,7 @@ export default function Recurring() {
   }
 
   async function handleCancel(t: RecurringTransaction) {
-    if (!confirm(`¿Cancelar "${t.name}"? Dejará de ejecutarse.`)) return;
+    if (!(await confirm({ message: `¿Cancelar "${t.name}"? Dejará de ejecutarse.`, tone: "danger" }))) return;
     try {
       await cancelRecurring(t.id);
       await load();
@@ -99,7 +101,7 @@ export default function Recurring() {
   }
 
   async function handleExecuteNow(t: RecurringTransaction) {
-    if (!confirm(`¿Ejecutar "${t.name}" ahora?`)) return;
+    if (!(await confirm(`¿Ejecutar "${t.name}" ahora?`))) return;
     try {
       await executeRecurringNow(t.id);
       await load();

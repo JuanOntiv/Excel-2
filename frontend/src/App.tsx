@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "./context/AuthContext";
 import { ThemeProvider } from "./context/ThemeContext";
 import { ToastProvider } from "./context/ToastContext";
+import { ConfirmProvider } from "./context/ConfirmContext";
 import { Toaster } from "./components/ui/Toaster";
 import { ProtectedRoute } from "./routes/ProtectedRoute";
 import { PublicOnlyRoute } from "./routes/PublicOnlyRoute";
@@ -29,6 +30,7 @@ function App() {
   return (
     <ThemeProvider>
       <ToastProvider>
+        <ConfirmProvider>
         <AuthProvider>
           <BrowserRouter>
           <Routes>
@@ -184,6 +186,7 @@ function App() {
           </BrowserRouter>
           <Toaster />
         </AuthProvider>
+        </ConfirmProvider>
       </ToastProvider>
     </ThemeProvider>
   );

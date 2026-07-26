@@ -85,7 +85,13 @@ def login(
 
     log_entry_action = LogAction.LOGIN
     from app.models.logs import Log
-    session.add(Log(user_id=user.id, action=log_entry_action, level=LogLevel.INFO, table="users"))
+    session.add(Log(
+        user_id=user.id,
+        action=log_entry_action,
+        level=LogLevel.INFO,
+        table="users",
+        detail=f"Desde {client_key}",
+    ))
     session.commit()
 
     return TokenResponse(access_token=access_token, refresh_token=refresh_token)
@@ -129,7 +135,13 @@ def logout(
     revoke_refresh_token(body.refresh_token, session)
 
     from app.models.logs import Log
-    session.add(Log(user_id=current_user.id, action=LogAction.LOGOUT, level=LogLevel.INFO, table="users"))
+    session.add(Log(
+        user_id=current_user.id,
+        action=LogAction.LOGOUT,
+        level=LogLevel.INFO,
+        table="users",
+        detail=current_user.mail,
+    ))
     session.commit()
 
     return {"message": "Logged out successfully"}

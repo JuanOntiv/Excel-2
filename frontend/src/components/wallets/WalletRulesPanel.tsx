@@ -4,6 +4,7 @@ import { listWalletRules, createWalletRule, updateWalletRule, deleteWalletRule }
 import type { WalletRulePayload } from "../../api/walletRules";
 import { listCategories } from "../../api/categories";
 import { WalletRuleFormModal } from "./WalletRuleFormModal";
+import { useConfirm } from "../../context/ConfirmContext";
 import { useToast } from "../../context/ToastContext";
 import type { Wallet, WalletRule, Category } from "../../types";
 
@@ -32,8 +33,9 @@ function describeRule(rule: WalletRule, categories: Category[]): string {
   }
 }
 
-export function WalletRulesPanel({ wallet, onClose }: { wallet: Wallet; onClose: () => void }) {
+export function WalletRulesPanel({ wallet, onClose }: { wallet: Wallet; onClose?: () => void }) {
   const { toast } = useToast();
+  const confirm = useConfirm();
   const [rules, setRules] = useState<WalletRule[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -82,7 +84,7 @@ export function WalletRulesPanel({ wallet, onClose }: { wallet: Wallet; onClose:
   }
 
   async function handleDelete(rule: WalletRule) {
-    if (!confirm("¿Eliminar esta regla?")) return;
+    if (!(await confirm({ message: "¿Eliminar esta regla?", tone: "danger" }))) return;
     try {
       await deleteWalletRule(rule.id);
       await load();
@@ -102,9 +104,11 @@ export function WalletRulesPanel({ wallet, onClose }: { wallet: Wallet; onClose:
           <button onClick={openCreate} className="flex items-center gap-1 px-3 py-1 rounded-lg bg-accent text-white text-xs font-medium hover:opacity-90">
             <Plus size={14} /> Nueva regla
           </button>
-          <button onClick={onClose} className="text-ink-muted-light dark:text-ink-muted-dark">
-            <X size={16} />
-          </button>
+          {onClose && (
+            <button onClick={onClose} className="text-ink-muted-light dark:text-ink-muted-dark">
+              <X size={16} />
+            </button>
+          )}
         </div>
       </div>
 

@@ -112,4 +112,4 @@ def deactivate_wallet(
     wallet.updated_at = datetime.now()
     session.add(wallet)
     session.commit()
-    return {"message": "Wallet deactivated successfully"}
+    return {"message": "Wallet deactivated successfully", "name": wallet.name}

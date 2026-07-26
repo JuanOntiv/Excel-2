@@ -2,6 +2,7 @@ import { apiClient } from "./client";
 import type { Transaction, TransactionType } from "../types";
 
 interface ListTransactionsParams {
+  type?: TransactionType;
   start_date?: string; // YYYY-MM-DD
   end_date?: string;
   category_id?: string;

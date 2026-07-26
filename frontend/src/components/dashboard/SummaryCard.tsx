@@ -14,6 +14,8 @@ interface SummaryCardProps {
   higherIsBetter?: boolean;
   /** Texto adicional bajo el valor, ej. nombre y fecha del movimiento destacado. */
   subtitle?: string | null;
+  /** Texto de comparación, ej. "mes anterior", "semana anterior". Default: "mes anterior". */
+  deltaLabel?: string;
 }
 
 const valueTone: Record<Tone, string> = {
@@ -29,7 +31,15 @@ const iconTone: Record<Tone, string> = {
   negative: "bg-negative/10 text-negative",
 };
 
-function DeltaRow({ delta, higherIsBetter }: { delta?: number | null; higherIsBetter?: boolean }) {
+function DeltaRow({
+  delta,
+  higherIsBetter,
+  deltaLabel = "mes anterior",
+}: {
+  delta?: number | null;
+  higherIsBetter?: boolean;
+  deltaLabel?: string;
+}) {
   // undefined = el llamador no pidió comparación (ej. tarjetas sin periodo
   // previo): no se muestra nada. null = pidió comparación pero no hay base.
   if (delta === undefined) return null;
@@ -37,7 +47,7 @@ function DeltaRow({ delta, higherIsBetter }: { delta?: number | null; higherIsBe
   if (delta === null) {
     return (
       <p className="mt-3 text-xs text-ink-muted-light dark:text-ink-muted-dark">
-        Sin datos del mes anterior
+        Sin datos del periodo anterior
       </p>
     );
   }
@@ -59,13 +69,13 @@ function DeltaRow({ delta, higherIsBetter }: { delta?: number | null; higherIsBe
     <p className={`mt-3 text-sm font-medium flex items-center gap-1 ${color}`}>
       <Arrow size={15} className="shrink-0" />
       <span>
-        {Math.abs(rounded)}% <span className="text-ink-muted-light dark:text-ink-muted-dark font-normal">vs. mes anterior</span>
+        {Math.abs(rounded)}% <span className="text-ink-muted-light dark:text-ink-muted-dark font-normal">vs. {deltaLabel}</span>
       </span>
     </p>
   );
 }
 
-export function SummaryCard({ label, value, icon, tone = "neutral", delta, higherIsBetter, subtitle }: SummaryCardProps) {
+export function SummaryCard({ label, value, icon, tone = "neutral", delta, higherIsBetter, subtitle, deltaLabel }: SummaryCardProps) {
   return (
     <div className="rounded-xl border border-line-light dark:border-line-dark bg-surface-elevated-light dark:bg-surface-elevated-dark p-5">
       <div className="flex items-start justify-between">
@@ -80,7 +90,7 @@ export function SummaryCard({ label, value, icon, tone = "neutral", delta, highe
           {icon}
         </div>
       </div>
-      <DeltaRow delta={delta} higherIsBetter={higherIsBetter} />
+      <DeltaRow delta={delta} higherIsBetter={higherIsBetter} deltaLabel={deltaLabel} />
     </div>
   );
 }

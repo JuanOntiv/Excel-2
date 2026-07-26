@@ -9,8 +9,11 @@ import {
   updateCategoryColor,
 } from "../api/categories";
 import { CategoryFormModal } from "../components/transactions/CategoryFormModal";
+import { ColorPickerButton } from "../components/common/ColorPickerButton";
 import { NotificationBell } from "../components/notifications/NotificationBell";
+import { useConfirm } from "../context/ConfirmContext";
 import { useToast } from "../context/ToastContext";
+import { categoryColor } from "../utils/categoryColor";
 import type { Category, CategoryType } from "../types";
 
 const typeLabels: Record<CategoryType, string> = {
@@ -19,7 +22,11 @@ const typeLabels: Record<CategoryType, string> = {
   both: "Ambos",
 };
 
-const DEFAULT_SWATCH = "#0f766e"; // --color-accent
+const typeStyles: Record<CategoryType, string> = {
+  income: "bg-positive/15 text-positive",
+  expense: "bg-negative/15 text-negative",
+  both: "bg-accent-soft text-accent dark:bg-accent/20 dark:text-accent-dark",
+};
 
 interface CategoryTableProps {
   title: string;
@@ -83,25 +90,17 @@ function CategoryTable({
                   }`}
                 >
                   <td className="px-4 py-3">
-                    <label
-                      className="relative inline-flex items-center cursor-pointer"
-                      title="Cambiar color"
-                    >
-                      <span
-                        className="w-4 h-4 rounded-full border border-line-light dark:border-line-dark"
-                        style={{ backgroundColor: c.color ?? DEFAULT_SWATCH }}
-                      />
-                      <input
-                        type="color"
-                        value={c.color ?? DEFAULT_SWATCH}
-                        onChange={(e) => onColorChange(c, e.target.value)}
-                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                      />
-                    </label>
+                    <ColorPickerButton
+                      value={categoryColor(c.id, c.color)}
+                      onChange={(color) => onColorChange(c, color)}
+                      size={16}
+                    />
                   </td>
                   <td className="px-4 py-3">{c.name}</td>
-                  <td className="px-4 py-3 text-ink-muted-light dark:text-ink-muted-dark">
-                    {typeLabels[c.type]}
+                  <td className="px-4 py-3">
+                    <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${typeStyles[c.type]}`}>
+                      {typeLabels[c.type]}
+                    </span>
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex justify-end gap-2">
@@ -144,6 +143,7 @@ function CategoryTable({
 
 export default function Categories() {
   const { toast } = useToast();
+  const confirm = useConfirm();
   const [categories, setCategories] = useState<Category[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showHidden, setShowHidden] = useState(false);
@@ -179,11 +179,15 @@ export default function Categories() {
     setModalOpen(true);
   }
 
-  async function handleSubmit(name: string, type: CategoryType) {
+  async function handleSubmit(name: string, type: CategoryType, color: string) {
     if (editing) {
       await updateCategory(editing.id, { name, type });
+      if (color !== categoryColor(editing.id, editing.color)) {
+        await updateCategoryColor(editing.id, color);
+      }
     } else {
-      await createCategory(name, type);
+      const created = await createCategory(name, type);
+      await updateCategoryColor(created.id, color);
     }
     await load();
     toast.success(editing ? "Categoría actualizada." : "Categoría creada.");
@@ -204,7 +208,7 @@ export default function Categories() {
   }
 
   async function handleDelete(c: Category) {
-    if (!confirm(`¿Eliminar "${c.name}"? Esta acción no se puede deshacer.`)) return;
+    if (!(await confirm({ message: `¿Eliminar "${c.name}"? Esta acción no se puede deshacer.`, tone: "danger" }))) return;
     try {
       await deleteCategory(c.id);
       await load();

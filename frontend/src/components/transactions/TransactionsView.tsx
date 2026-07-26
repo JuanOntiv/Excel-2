@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef } from "react";
 import { Plus, TrendingUp, TrendingDown, Trophy, CalendarDays, Download } from "lucide-react";
 import { useTransactionsByType } from "../../hooks/useTransactionsByType";
+import { useAllTransactionsByType } from "../../hooks/useAllTransactionsByType";
+import { useConfirm } from "../../context/ConfirmContext";
 import { useToast } from "../../context/ToastContext";
 import { listCategories } from "../../api/categories";
 import { createTransaction, updateTransaction, deleteTransaction, exportTransactions } from "../../api/transactions";
@@ -12,13 +14,15 @@ import { TransactionFilters, EMPTY_FILTERS, applyFilters } from "./TransactionFi
 import type { TxFilters } from "./TransactionFilters";
 import { TransactionFormModal } from "./TransactionFormModal";
 import { NotificationBell } from "../notifications/NotificationBell";
-import { formatCurrency, getPeriodRange, PERIOD_OPTIONS } from "../../utils/date";
+import { formatCurrency, getPeriodRange, PERIOD_OPTIONS, PERIOD_COMPARISON_LABEL } from "../../utils/date";
 import type { Transaction, Category, TransactionType } from "../../types";
 import type { Period } from "../../utils/date";
 
+// El verde de "Ingresos" es el mismo tono --color-positive (ver index.css),
+// pero más brillante para que resalte en la gráfica de barras.
 const typeConfig = {
-  income: { label: "Ingresos", chartColor: "#0f766e" },
-  expense: { label: "Egresos", chartColor: "#b91c1c" },
+  income: { label: "Ingresos", singular: "ingreso", chartColor: "#10b981" },
+  expense: { label: "Egresos", singular: "egreso", chartColor: "#b91c1c" },
 };
 
 /** Variación % vs. periodo anterior. null = sin base para comparar. */
@@ -40,8 +44,12 @@ function monthsSpanned(txs: Transaction[]): number {
 
 export function TransactionsView({ type }: { type: TransactionType }) {
   const { toast } = useToast();
+  const confirm = useConfirm();
   const [period, setPeriod] = useState<Period>("month");
-  const { transactions, previousTotal, isLoading, error, reload } = useTransactionsByType(type, period);
+  const { transactions, previousTotal, previousTransactions, isLoading, error, reload } = useTransactionsByType(type, period);
+  // Historial: independiente del periodo elegido arriba, siempre trae todo
+  // (paginado en la tabla) para que cambiar de periodo no lo recalcule.
+  const { transactions: allTransactions, isLoading: isLoadingAll, error: allError, reload: reloadAll } = useAllTransactionsByType(type);
   const [categories, setCategories] = useState<Category[]>([]);
   const [filters, setFilters] = useState<TxFilters>(EMPTY_FILTERS);
   const [modalOpen, setModalOpen] = useState(false);
@@ -56,12 +64,6 @@ export function TransactionsView({ type }: { type: TransactionType }) {
   useEffect(() => {
     listCategories().then(setCategories).catch(() => {});
   }, []);
-
-  // Al cambiar de periodo cambian los datos cargados; se limpian los filtros
-  // para no dejar un filtro que ya no aplica al nuevo conjunto.
-  useEffect(() => {
-    setFilters(EMPTY_FILTERS);
-  }, [period]);
 
   useEffect(() => {
     if (!exportMenuOpen) return;
@@ -90,15 +92,15 @@ export function TransactionsView({ type }: { type: TransactionType }) {
     } else {
       await createTransaction({ ...payload, type });
     }
-    await reload();
+    await Promise.all([reload(), reloadAll()]);
     toast.success(editingTransaction ? "Movimiento actualizado." : "Movimiento creado.");
   }
 
   async function handleDelete(t: Transaction) {
-    if (!confirm(`¿Eliminar "${t.name}"?`)) return;
+    if (!(await confirm({ message: `¿Eliminar "${t.name}"?`, tone: "danger" }))) return;
     try {
       await deleteTransaction(t.id);
-      await reload();
+      await Promise.all([reload(), reloadAll()]);
       toast.success("Movimiento eliminado.");
     } catch {
       toast.error("No se pudo eliminar el movimiento.");
@@ -132,15 +134,18 @@ export function TransactionsView({ type }: { type: TransactionType }) {
     : null;
   const monthlyAvg = total / monthsSpanned(transactions);
   const totalDelta = previousTotal !== null ? pctChange(total, previousTotal) : null;
+  const previousMonthlyAvg = previousTotal !== null ? previousTotal / monthsSpanned(previousTransactions) : null;
+  const monthlyAvgDelta = previousMonthlyAvg !== null ? pctChange(monthlyAvg, previousMonthlyAvg) : null;
 
-  // El filtro de categoría solo ofrece las categorías presentes en el periodo.
-  const presentCategoryIds = new Set(transactions.map((t) => t.category_id));
+  // El filtro de categoría solo ofrece las categorías presentes en el historial completo.
+  const presentCategoryIds = new Set(allTransactions.map((t) => t.category_id));
   const categoryOptions = categories
     .filter((c) => presentCategoryIds.has(c.id))
     .sort((a, b) => a.name.localeCompare(b.name));
 
-  // Filtrado client-side: SOLO afecta la tabla, no las gráficas ni las tarjetas.
-  const filtered = applyFilters(transactions, filters);
+  // Filtrado client-side sobre el historial completo (no el del periodo):
+  // SOLO afecta la tabla, no las gráficas ni las tarjetas.
+  const filtered = applyFilters(allTransactions, filters);
 
   return (
     <div>
@@ -152,7 +157,7 @@ export function TransactionsView({ type }: { type: TransactionType }) {
             <button
               onClick={() => setExportMenuOpen((o) => !o)}
               disabled={isExporting}
-              className="flex items-center gap-2 px-4 py-2 rounded-lg border border-line-light dark:border-line-dark text-ink-light dark:text-ink-dark font-medium hover:bg-line-light/40 dark:hover:bg-line-dark/40 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex items-center gap-2 px-4 py-2 rounded-lg border border-line-dark dark:border-line-light bg-surface-dark/80 dark:bg-surface-light/80 text-ink-dark dark:text-ink-light font-medium hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Download size={18} />
               {isExporting ? "Exportando..." : "Exportar"}
@@ -176,7 +181,7 @@ export function TransactionsView({ type }: { type: TransactionType }) {
           </div>
           <button onClick={openCreateModal} className="flex items-center gap-2 px-4 py-2 rounded-lg bg-accent text-white font-medium hover:opacity-90">
             <Plus size={18} />
-            Nuevo
+            Nuevo {config.singular}
           </button>
         </div>
       </div>
@@ -213,6 +218,7 @@ export function TransactionsView({ type }: { type: TransactionType }) {
               tone={isIncome ? "positive" : "negative"}
               delta={totalDelta}
               higherIsBetter={isIncome}
+              deltaLabel={PERIOD_COMPARISON_LABEL[period]}
             />
             <SummaryCard
               label="Mayor movimiento"
@@ -224,6 +230,9 @@ export function TransactionsView({ type }: { type: TransactionType }) {
               label="Promedio mensual"
               value={formatCurrency(monthlyAvg)}
               icon={<CalendarDays size={20} />}
+              delta={monthlyAvgDelta}
+              higherIsBetter={isIncome}
+              deltaLabel={PERIOD_COMPARISON_LABEL[period]}
             />
           </div>
 
@@ -231,13 +240,23 @@ export function TransactionsView({ type }: { type: TransactionType }) {
             <TimeBarChart transactions={transactions} color={config.chartColor} period={period} />
             <CategoryDonut transactions={transactions} categories={categories} title={`${config.label} por categoría`} />
           </div>
+        </>
+      )}
 
+      {/* Historial: siempre trae todas las transacciones del tipo, sin
+          importar el periodo elegido arriba (solo afecta tarjetas/gráficas). */}
+      {isLoadingAll ? (
+        <p className="text-ink-muted-light dark:text-ink-muted-dark">Cargando historial...</p>
+      ) : allError ? (
+        <p className="text-negative">{allError}</p>
+      ) : (
+        <>
           <TransactionFilters
             filters={filters}
             onChange={setFilters}
             categories={categoryOptions}
             resultCount={filtered.length}
-            totalCount={transactions.length}
+            totalCount={allTransactions.length}
           />
           <TransactionTable transactions={filtered} categories={categories} onEdit={openEditModal} onDelete={handleDelete} />
         </>

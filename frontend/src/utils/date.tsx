@@ -1,26 +1,3 @@
-export function getCurrentMonthRange(): { start_date: string; end_date: string } {
-  const now = new Date();
-  const start = new Date(now.getFullYear(), now.getMonth(), 1);
-  const end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-
-  return {
-    start_date: formatDate(start),
-    end_date: formatDate(end),
-  };
-}
-
-export function getPreviousMonthRange(): { start_date: string; end_date: string } {
-  const now = new Date();
-  // Día 0 del mes actual = último día del mes anterior.
-  const start = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-  const end = new Date(now.getFullYear(), now.getMonth(), 0);
-
-  return {
-    start_date: formatDate(start),
-    end_date: formatDate(end),
-  };
-}
-
 function formatDate(d: Date): string {
   return d.toISOString().split("T")[0]; // YYYY-MM-DD
 }
@@ -45,85 +22,77 @@ export const PERIOD_OPTIONS: { value: Period; label: string }[] = [
   { value: "all", label: "Todo" },
 ];
 
-// Rango de fechas del periodo actual.
-export function getPeriodRange(period: Period): PeriodRange {
-  const now = new Date();
-  const y = now.getFullYear();
-  const m = now.getMonth();
-  const day = now.getDate();
-  let start: Date;
-  let end: Date;
+// Texto para adjuntar a un sustantivo ("Ingresos ${...}") describiendo el
+// periodo seleccionado.
+export const PERIOD_NOUN: Record<Period, string> = {
+  week: "de la semana",
+  month: "del mes",
+  quarter: "de 3 meses",
+  half: "de 6 meses",
+  year: "del año",
+  all: "(todo el periodo)",
+};
 
+// Texto para la comparación ("vs. ${...}") en las tarjetas con delta.
+export const PERIOD_COMPARISON_LABEL: Record<Period, string> = {
+  week: "semana anterior",
+  month: "mes anterior",
+  quarter: "trimestre anterior",
+  half: "semestre anterior",
+  year: "año anterior",
+  all: "periodo anterior",
+};
+
+function addDays(d: Date, n: number): Date {
+  const copy = new Date(d);
+  copy.setDate(copy.getDate() + n);
+  return copy;
+}
+
+function addMonths(d: Date, n: number): Date {
+  const copy = new Date(d);
+  copy.setMonth(copy.getMonth() + n);
+  return copy;
+}
+
+// Punto de inicio de una ventana de `period` de duración que TERMINA en `from`
+// (inclusive). Todos los periodos son ventanas móviles de duración fija, no
+// rangos alineados al calendario: "Mes" = últimos 30 días a partir de hoy, no
+// "del 1 al día actual del mes".
+function periodStart(from: Date, period: Period): Date {
   switch (period) {
-    case "week": {
-      const dow = (now.getDay() + 6) % 7; // 0 = lunes
-      start = new Date(y, m, day - dow);
-      end = new Date(y, m, day - dow + 6);
-      break;
-    }
+    case "week":
+      return addDays(from, -6);
     case "month":
-      start = new Date(y, m, 1);
-      end = new Date(y, m + 1, 0);
-      break;
+      return addMonths(from, -1);
     case "quarter":
-      start = new Date(y, m - 2, 1);
-      end = new Date(y, m + 1, 0);
-      break;
+      return addMonths(from, -3);
     case "half":
-      start = new Date(y, m - 5, 1);
-      end = new Date(y, m + 1, 0);
-      break;
+      return addMonths(from, -6);
     case "year":
-      start = new Date(y, m - 11, 1);
-      end = new Date(y, m + 1, 0);
-      break;
+      return addMonths(from, -12);
     case "all":
     default:
-      start = new Date(2000, 0, 1);
-      end = new Date(y, m + 1, 0);
-      break;
+      return new Date(2000, 0, 1);
   }
+}
 
+// Rango de fechas del periodo actual: ventana móvil que siempre termina hoy.
+export function getPeriodRange(period: Period): PeriodRange {
+  const end = new Date();
+  const start = periodStart(end, period);
   return { start_date: formatDate(start), end_date: formatDate(end) };
 }
 
-// Rango del periodo INMEDIATAMENTE anterior (para comparar). null = "todo",
-// que no tiene periodo previo.
+// Rango del periodo INMEDIATAMENTE anterior (para comparar): misma duración,
+// terminando justo un día antes de que empiece el periodo actual. null =
+// "todo", que no tiene periodo previo.
 export function getPreviousPeriodRange(period: Period): PeriodRange | null {
-  const now = new Date();
-  const y = now.getFullYear();
-  const m = now.getMonth();
-  const day = now.getDate();
-  let start: Date;
-  let end: Date;
+  if (period === "all") return null;
 
-  switch (period) {
-    case "week": {
-      const dow = (now.getDay() + 6) % 7;
-      end = new Date(y, m, day - dow - 1);
-      start = new Date(y, m, day - dow - 7);
-      break;
-    }
-    case "month":
-      start = new Date(y, m - 1, 1);
-      end = new Date(y, m, 0);
-      break;
-    case "quarter":
-      start = new Date(y, m - 5, 1);
-      end = new Date(y, m - 2, 0);
-      break;
-    case "half":
-      start = new Date(y, m - 11, 1);
-      end = new Date(y, m - 5, 0);
-      break;
-    case "year":
-      start = new Date(y, m - 23, 1);
-      end = new Date(y, m - 11, 0);
-      break;
-    case "all":
-    default:
-      return null;
-  }
+  const currentStart = new Date(getPeriodRange(period).start_date + "T00:00:00");
+  const end = addDays(currentStart, -1);
+  const start = periodStart(end, period);
 
   return { start_date: formatDate(start), end_date: formatDate(end) };
 }

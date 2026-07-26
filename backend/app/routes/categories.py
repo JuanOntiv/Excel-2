@@ -210,7 +210,7 @@ def deactivate_category(
     category.updated_at = datetime.now()
     session.add(category)
     session.commit()
-    return {"message": "Category deactivated successfully"}
+    return {"message": "Category deactivated successfully", "name": category.name}
 
 
 

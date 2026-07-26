@@ -20,13 +20,22 @@ from app.models.categories import Category, CategoryType
 from app.models.wallets import Wallet
 from app.models.logs import LogAction, LogLevel
 from app.auth.dependencies import get_current_user
-from app.utils.logs_decorator import log_action
+from app.utils.logs_decorator import log_action, SKIP_LOG
 from app.services.wallet_assignment import assign_wallets_for_transaction
 from app.services.notifications import create_notification
 from app.services.goals import evaluate_goal_completions, flag_expired_goals
 from app.models.notifications import NotificationType
 
 router = APIRouter(prefix="/recurring-transactions", tags=["Recurring Transactions"])
+
+
+def _execute_pending_detail(result, kwargs):
+    """execute-pending corre en cada login: solo tiene sentido registrarlo
+    cuando realmente genero transacciones."""
+    count = result.get("executed", 0) if isinstance(result, dict) else 0
+    if not count:
+        return SKIP_LOG
+    return f"{count} recurrente{'s' if count != 1 else ''} ejecutada{'s' if count != 1 else ''}"
 
 
 _FREQUENCY_TO_TIMEDELTA = {
@@ -178,7 +187,7 @@ def cancel_recurring(
     trx.updated_at = datetime.now()
     session.add(trx)
     session.commit()
-    return {"message": "Recurring transaction cancelled"}
+    return {"message": "Recurring transaction cancelled", "name": trx.name}
 
 
 @router.post("/{trx_id}/pause", response_model=RecurringTransactionRead)
@@ -277,7 +286,7 @@ def execute_recurring_now(
 
 
 @router.post("/execute-pending", status_code=200)
-@log_action(action=LogAction.CREATE, table="transactions")
+@log_action(action=LogAction.CREATE, table="transactions", detail_fn=_execute_pending_detail)
 def execute_pending(
     session: Session = Depends(get_session),
     current_user: User = Depends(get_current_user),
@@ -353,6 +362,7 @@ def execute_pending(
 
     return {
         "message": f"Executed {created_count} pending recurring transactions",
+        "executed": created_count,
         "errors": errors if errors else None,
     }
 

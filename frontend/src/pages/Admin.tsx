@@ -4,12 +4,14 @@ import { listUsers, deactivateUser, reactivateUser } from "../api/admin";
 import { ResetPasswordModal } from "../components/admin/ResetPasswordModal";
 import { NotificationBell } from "../components/notifications/NotificationBell";
 import { useAuth } from "../context/AuthContext";
+import { useConfirm } from "../context/ConfirmContext";
 import { useToast } from "../context/ToastContext";
 import type { User } from "../types";
 
 export default function Admin() {
   const { user: currentUser } = useAuth();
   const { toast } = useToast();
+  const confirm = useConfirm();
   const [users, setUsers] = useState<User[]>([]);
   const [includeInactive, setIncludeInactive] = useState(true);
   const [isLoading, setIsLoading] = useState(true);
@@ -30,7 +32,7 @@ export default function Admin() {
   }, [load]);
 
   async function handleDeactivate(u: User) {
-    if (!confirm(`¿Desactivar la cuenta de ${u.name}? No podrá iniciar sesión.`)) return;
+    if (!(await confirm({ message: `¿Desactivar la cuenta de ${u.name}? No podrá iniciar sesión.`, tone: "danger" }))) return;
     setBusyId(u.id);
     try {
       await deactivateUser(u.id);

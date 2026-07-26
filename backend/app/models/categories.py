@@ -34,7 +34,7 @@ class CategoryUpdate(SQLModel):
     type: Optional[CategoryType] = None
     is_active: Optional[bool] = None
     is_hidden: Optional[bool] = None
-    color: Optional[bool] = None
+    color: Optional[str] = None
     user_id: Optional[UUID] = None
 
 

@@ -1,12 +1,19 @@
 from datetime import datetime
 from uuid import UUID
-from typing import List
+from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlmodel import Session, select
 
 from app.db.db import get_session
-from app.models.wallet_rules import WalletRule, WalletRuleCreate, WalletRuleUpdate, WalletRuleRead, WalletRuleType
+from app.models.wallet_rules import (
+    WalletRule,
+    WalletRuleCreate,
+    WalletRuleUpdate,
+    WalletRuleRead,
+    WalletRuleType,
+    WalletRuleTransactionType,
+)
 from app.models.wallets import Wallet
 from app.models.categories import Category
 from app.models.users import User
@@ -16,6 +23,47 @@ from app.utils.logs_decorator import log_action
 from app.services.wallet_assignment import recalculate_assignments_for_rule, remove_assignments_for_rule
 
 router = APIRouter(prefix="/wallet-rules", tags=["Wallet Rules"])
+
+_RULE_TYPE_LABELS = {
+    WalletRuleType.CATEGORY: "Categoría",
+    WalletRuleType.TRANSACTION_TYPE: "Tipo de transacción",
+    WalletRuleType.KEYWORD: "Palabra clave",
+    WalletRuleType.DATE_RANGE: "Rango de fechas",
+    WalletRuleType.AMOUNT_RANGE: "Rango de monto",
+}
+
+
+def _describe_wallet_rule(rule: WalletRule, session: Session) -> str:
+    """Las reglas son polimorficas (sin campo "name"), asi que se arma una
+    descripcion legible a partir de los campos que aplican a su rule_type."""
+    label = _RULE_TYPE_LABELS.get(rule.rule_type, rule.rule_type)
+    if rule.rule_type == WalletRuleType.CATEGORY:
+        category = session.get(Category, rule.category_id) if rule.category_id else None
+        return f"{label}: {category.name if category else 'categoría desconocida'}"
+    if rule.rule_type == WalletRuleType.TRANSACTION_TYPE:
+        value = "Ingresos" if rule.transaction_type == WalletRuleTransactionType.INCOME else "Egresos"
+        return f"{label}: {value}"
+    if rule.rule_type == WalletRuleType.KEYWORD:
+        return f'{label}: "{rule.keyword}"'
+    if rule.rule_type == WalletRuleType.DATE_RANGE:
+        return f"{label}: {rule.date_from} → {rule.date_to}"
+    if rule.rule_type == WalletRuleType.AMOUNT_RANGE:
+        return f"{label}: {rule.amount_from} — {rule.amount_to}"
+    return label
+
+
+def _wallet_rule_detail(result, kwargs) -> Optional[str]:
+    session = kwargs.get("session")
+    if session is None:
+        return None
+    rule = result if isinstance(result, WalletRule) else None
+    if rule is None:
+        rule_id = kwargs.get("rule_id")
+        if rule_id is not None:
+            rule = session.get(WalletRule, rule_id)
+    if rule is None:
+        return None
+    return _describe_wallet_rule(rule, session)
 
 
 def _validate_rule_fields(rule_type: WalletRuleType, data: dict) -> None:
@@ -34,7 +82,7 @@ def _validate_rule_fields(rule_type: WalletRuleType, data: dict) -> None:
 
 
 @router.post("/", response_model=WalletRuleRead, status_code=status.HTTP_201_CREATED)
-@log_action(action=LogAction.CREATE, table="wallet_rules")
+@log_action(action=LogAction.CREATE, table="wallet_rules", detail_fn=_wallet_rule_detail)
 def create_wallet_rule(
     rule_in: WalletRuleCreate,
     session: Session = Depends(get_session),
@@ -105,7 +153,7 @@ def get_wallet_rule(
 
 
 @router.patch("/{rule_id}", response_model=WalletRuleRead)
-@log_action(action=LogAction.UPDATE, table="wallet_rules")
+@log_action(action=LogAction.UPDATE, table="wallet_rules", detail_fn=_wallet_rule_detail)
 def update_wallet_rule(
     rule_id: UUID,
     rule_in: WalletRuleUpdate,
@@ -143,7 +191,7 @@ def update_wallet_rule(
 
 
 @router.delete("/{rule_id}", status_code=200)
-@log_action(action=LogAction.DELETE, level=LogLevel.WARNING, table="wallet_rules")
+@log_action(action=LogAction.DELETE, level=LogLevel.WARNING, table="wallet_rules", detail_fn=_wallet_rule_detail)
 def deactivate_wallet_rule(
     rule_id: UUID,
     session: Session = Depends(get_session),

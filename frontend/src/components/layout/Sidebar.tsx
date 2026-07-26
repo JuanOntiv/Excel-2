@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import {
   LayoutDashboard,
@@ -42,6 +43,8 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
   const { theme, toggleTheme } = useTheme();
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const [profileMenuOpen, setProfileMenuOpen] = useState(false);
+  const profileRef = useRef<HTMLDivElement>(null);
 
   // El enlace de administración solo aparece para admins. El backend valida el rol igual.
   const items = [...navItems];
@@ -49,7 +52,17 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
     items.push({ to: "/admin", icon: ShieldCheck, label: "Administración" });
   }
 
+  useEffect(() => {
+    if (!profileMenuOpen) return;
+    function handleClickOutside(e: MouseEvent) {
+      if (profileRef.current && !profileRef.current.contains(e.target as Node)) setProfileMenuOpen(false);
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [profileMenuOpen]);
+
   async function handleLogout() {
+    setProfileMenuOpen(false);
     await logout();
     navigate("/login");
   }
@@ -124,56 +137,70 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
           </span>
           {!collapsed && <span>{theme === "dark" ? "Modo claro" : "Modo oscuro"}</span>}
         </button>
-        <button
-          onClick={handleLogout}
-          className={`flex items-center gap-3 px-2 py-2.5 rounded-lg text-[15px] font-medium text-negative hover:bg-negative/10 ${
-            collapsed ? "justify-center" : ""
-          }`}
-        >
-          <LogOut size={19} />
-          {!collapsed && <span>Cerrar sesión</span>}
-        </button>
       </div>
 
-      {/* Perfil, anclado abajo. La config vive aquí, a la derecha del usuario. */}
-      <div className="border-t border-line-light dark:border-line-dark p-3 flex items-center gap-3">
-        <div className="w-9 h-9 rounded-full bg-accent-soft dark:bg-accent-dark/25 text-accent flex items-center justify-center text-sm font-semibold shrink-0">
-          {user?.name?.[0]?.toUpperCase() ?? "?"}
-        </div>
-        {!collapsed && (
-          <>
-            <div className="min-w-0 flex-1">
-              <p className="text-[15px] font-semibold truncate text-ink-light dark:text-ink-dark">{user?.name}</p>
-              <p className="text-sm text-ink-muted-light dark:text-ink-muted-dark truncate">{user?.mail}</p>
-            </div>
+      {/* Perfil, anclado abajo. Al hacer clic despliega Historial, Configuración y Cerrar sesión. */}
+      <div className="relative border-t border-line-light dark:border-line-dark p-3" ref={profileRef}>
+        {profileMenuOpen && (
+          <div
+            className={`absolute bottom-full mb-2 w-56 rounded-xl border border-line-light dark:border-line-dark bg-surface-elevated-light dark:bg-surface-elevated-dark shadow-xl overflow-hidden ${
+              collapsed ? "left-2" : "left-2 right-2 w-auto"
+            }`}
+          >
             <NavLink
               to="/history"
+              onClick={() => setProfileMenuOpen(false)}
               className={({ isActive }) =>
-                `p-2 rounded-lg shrink-0 ${
+                `flex items-center gap-3 px-3 py-2.5 text-sm font-medium ${
                   isActive
                     ? "bg-accent text-white"
-                    : "text-ink-muted-light dark:text-ink-muted-dark hover:bg-surface-light dark:hover:bg-surface-dark hover:text-ink-light dark:hover:text-ink-dark"
+                    : "text-ink-light dark:text-ink-dark hover:bg-surface-light dark:hover:bg-surface-dark"
                 }`
               }
-              title="Historial"
             >
-              <History size={18} />
+              <History size={17} />
+              Historial
             </NavLink>
             <NavLink
               to="/settings"
+              onClick={() => setProfileMenuOpen(false)}
               className={({ isActive }) =>
-                `p-2 rounded-lg shrink-0 ${
+                `flex items-center gap-3 px-3 py-2.5 text-sm font-medium ${
                   isActive
                     ? "bg-accent text-white"
-                    : "text-ink-muted-light dark:text-ink-muted-dark hover:bg-surface-light dark:hover:bg-surface-dark hover:text-ink-light dark:hover:text-ink-dark"
+                    : "text-ink-light dark:text-ink-dark hover:bg-surface-light dark:hover:bg-surface-dark"
                 }`
               }
-              title="Configuración"
             >
-              <Settings size={18} />
+              <Settings size={17} />
+              Configuración
             </NavLink>
-          </>
+            <button
+              onClick={handleLogout}
+              className="flex items-center gap-3 px-3 py-2.5 text-sm font-medium text-negative hover:bg-negative/10 w-full border-t border-line-light dark:border-line-dark"
+            >
+              <LogOut size={17} />
+              Cerrar sesión
+            </button>
+          </div>
         )}
+
+        <button
+          onClick={() => setProfileMenuOpen((o) => !o)}
+          className={`flex items-center gap-3 w-full rounded-lg hover:bg-surface-light dark:hover:bg-surface-dark ${
+            collapsed ? "justify-center" : ""
+          }`}
+        >
+          <div className="w-9 h-9 rounded-full bg-accent-soft dark:bg-accent-dark/25 text-accent flex items-center justify-center text-sm font-semibold shrink-0">
+            {user?.name?.[0]?.toUpperCase() ?? "?"}
+          </div>
+          {!collapsed && (
+            <div className="min-w-0 flex-1 text-left">
+              <p className="text-[15px] font-semibold truncate text-ink-light dark:text-ink-dark">{user?.name}</p>
+              <p className="text-sm text-ink-muted-light dark:text-ink-muted-dark truncate">{user?.mail}</p>
+            </div>
+          )}
+        </button>
       </div>
     </aside>
   );

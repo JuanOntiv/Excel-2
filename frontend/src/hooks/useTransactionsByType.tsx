@@ -9,6 +9,9 @@ export function useTransactionsByType(type: TransactionType, period: Period) {
   // Suma del periodo INMEDIATAMENTE anterior (para la comparación). null = el
   // periodo no tiene uno previo ("todo").
   const [previousTotal, setPreviousTotal] = useState<number | null>(null);
+  // Movimientos del periodo anterior (para calcular su propio promedio
+  // mensual, no solo la suma).
+  const [previousTransactions, setPreviousTransactions] = useState<Transaction[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -27,11 +30,11 @@ export function useTransactionsByType(type: TransactionType, period: Period) {
       setTransactions(current.filter((t) => t.type === type));
 
       if (prevRange) {
-        const prevSum = previous
-          .filter((t) => t.type === type)
-          .reduce((s, t) => s + t.amount, 0);
-        setPreviousTotal(prevSum);
+        const prevFiltered = previous.filter((t) => t.type === type);
+        setPreviousTransactions(prevFiltered);
+        setPreviousTotal(prevFiltered.reduce((s, t) => s + t.amount, 0));
       } else {
+        setPreviousTransactions([]);
         setPreviousTotal(null);
       }
     } catch {
@@ -45,5 +48,5 @@ export function useTransactionsByType(type: TransactionType, period: Period) {
     load();
   }, [load]);
 
-  return { transactions, previousTotal, isLoading, error, reload: load };
+  return { transactions, previousTotal, previousTransactions, isLoading, error, reload: load };
 }
