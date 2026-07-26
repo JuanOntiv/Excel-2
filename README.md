@@ -7,7 +7,7 @@ A full-stack personal finance management application. Track income, expenses, re
  
 - **Authentication** — JWT-based auth with access + refresh tokens, secure password hashing
 - **Dashboard** — Monthly overview of income, expenses, and balance at a glance
-- **Income & Expenses** — Full CRUD with monthly trend charts, category breakdown (pie chart), paginated history, and highest/lowest transaction highlights
+- **Income & Expenses** — Full CRUD with monthly trend charts, category breakdown (pie chart), paginated history, highest/lowest transaction highlights, and CSV/Excel export scoped to the active period and category filter
 - **Categories** — Global (shared) and personal categories, with per-user preferences to hide categories or assign custom colors without affecting other users
 - **Recurring Transactions** — Automate regular income/expenses (daily, weekly, biweekly, monthly, yearly) with optional auto-execution or manual confirmation
 - **Wallets** — Organize transactions into custom groupings, either manually or automatically via rules (by category, transaction type, keyword, date range, or amount range)
@@ -22,6 +22,7 @@ A full-stack personal finance management application. Track income, expenses, re
 - Docker Compose for local development
 - JWT authentication (access + refresh, with refresh token rotation and SHA-256 hashing)
 - bcrypt for password hashing
+- openpyxl for Excel (XLSX) export
 **Frontend**
 - React + TypeScript + Vite
 - Tailwind CSS v4

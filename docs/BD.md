@@ -26,6 +26,16 @@ Todas las tablas incluyen `is_active` (Bool, borrado lógico), `created_at` (Tim
 ** una `Transaction` solo puede usar una `Category` si `Category.Type == Transaction.Type` o `Category.Type == 'Both'`. Se valida en la capa de aplicación (no a nivel de BD por ahora).
 
 
+# User_Category_Preferences
+- **ID - UUID - PK**
+- *user_UUID - FK*
+- *category_UUID - FK*
+- Is_Hidden - Bool - Default false
+- Color - String(7) - Nullable (ej. "#0f766e")
+- UNIQUE(user_id, category_id)
+** existe para no pisar visibilidad/color entre usuarios en categorías globales (`Category.user_id IS NULL`): poner `is_hidden`/`color` directamente en `Category` las afectaría para todos los usuarios a la vez.
+
+
 # Recurring Transactions
 - **ID - UUID - PK**
 - *user_UUID - FK*
@@ -75,9 +85,44 @@ Todas las tablas incluyen `is_active` (Bool, borrado lógico), `created_at` (Tim
 - created_at - Timestamp
 
 
+# Refresh_Tokens
+- **ID - UUID - PK**
+- *user_UUID - FK*
+- Token_Hash - String - Unique (solo se guarda el hash SHA-256, nunca el token en texto plano)
+- Expires_At - Timestamp
+- Revoked - Bool - Default false
+- created_at - Timestamp
+** sin `updated_at`/`is_active` propios: un refresh token no se edita, se rota (se revoca y se crea uno nuevo).
+
+
+# Logs
+- **ID - UUID - PK**
+- *user_UUID - FK - Nullable (acciones no autenticadas, ej. login fallido)*
+- Action - ENUM (Create, Read, Update, Delete, Login, Logout)
+- Level - ENUM (Info, Warning, Error, Security) - Default Info
+- Table - String(50) - Nullable
+- Detail - String(500) - Nullable
+- created_at - Timestamp
+** sin `updated_at`/`is_active`: los logs son append-only.
+
+
+# Goals
+- **ID - UUID - PK**
+- *user_UUID - FK*
+- Name
+- Description - Nullable
+- Goal_Type - ENUM (Income, Expense_Limit, Savings)
+- Target_Amount
+- Start_Date
+- End_Date
+- *wallet_id - FK - Nullable (NULL = todas las transacciones, wallet default implícita)*
+- *category_id - FK - Nullable (NULL = todas las categorías)*
+- Status - ENUM (Active, Achieved, Failed, Cancelled)
+** el progreso (`current_amount`, `percentage`, etc.) se calcula al vuelo a partir de las transacciones del rango/wallet/categoría — no se persiste.
+
 
 ## Pendientes 
 - Combinación de reglas con AND (ej. categoría X **y** monto > Y) en `Wallet_Rules`.
 - Permitir al usuario definir frecuencias personalizadas en `Recurring_Transactions` (ej. "cada N días") en vez de solo el ENUM fijo.
-- Posibilidad de ocultar categorías globales por usuario (`User_Hidden_Categories`).
 - Validación de `Category.Type` vs `Transaction.Type` a nivel de BD (trigger), si se detectan múltiples puntos de inserción a futuro.
+- ~~Posibilidad de ocultar categorías globales por usuario~~ — hecho, ver `User_Category_Preferences` arriba.

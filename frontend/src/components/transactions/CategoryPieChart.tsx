@@ -1,4 +1,5 @@
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend } from "recharts";
+import { ChartTooltip } from "../charts/ChartTooltip";
 import type { Transaction, Category } from "../../types";
 
 interface Props {
@@ -8,7 +9,7 @@ interface Props {
 }
 
 // Fallback para categorías sin color asignado (ver boton de color en /categories).
-const FALLBACK_COLORS = ["#0f766e", "#b45309", "#7c3aed", "#be123c", "#0369a1", "#4d7c0f", "#a16207", "#9333ea"];
+const FALLBACK_COLORS = ["#2563eb", "#2dd4bf", "#dc2626", "#a855f7", "#f59e0b", "#059669", "#ec4899", "#78716c"];
 
 export function CategoryPieChart({ transactions, categories, title = "Por categoría" }: Props) {
   const totals = new Map<string, number>();
@@ -43,7 +44,7 @@ export function CategoryPieChart({ transactions, categories, title = "Por catego
               <Cell key={i} fill={entry.color} />
             ))}
           </Pie>
-          <Tooltip />
+          <Tooltip content={<ChartTooltip />} />
           <Legend wrapperStyle={{ fontSize: 12 }} />
         </PieChart>
       </ResponsiveContainer>

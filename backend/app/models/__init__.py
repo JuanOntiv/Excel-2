@@ -61,6 +61,15 @@ from app.models.user_category_preferences import (
     UserCategoryPreferenceUpdate,
     UserCategoryPreferenceRead,
 )
+from app.models.goals import (
+    Goal,
+    GoalType,
+    GoalStatus,
+    GoalCreate,
+    GoalUpdate,
+    GoalRead,
+    GoalProgressRead,
+)
 from app.models.logs import (
     Log,
     LogAction,
@@ -69,6 +78,12 @@ from app.models.logs import (
     LogRead,
 )
 from app.models.refresh_tokens import RefreshToken, RefreshTokenRead
+from app.models.notifications import (
+    Notification,
+    NotificationType,
+    NotificationCreate,
+    NotificationRead,
+)
 
 
 __all__ = [
@@ -84,6 +99,9 @@ __all__ = [
     "RecurringTransactionStatus", "RecurringTransactionCreate",
     "RecurringTransactionUpdate", "RecurringTransactionRead",
     "UserCategoryPreference", "UserCategoryPreferenceUpdate", "UserCategoryPreferenceRead",
+    "Goal", "GoalType", "GoalStatus",
+    "GoalCreate", "GoalUpdate", "GoalRead", "GoalProgressRead",
     "Log", "LogAction", "LogLevel", "LogCreate", "LogRead",
     "RefreshToken", "RefreshTokenRead",
+    "Notification", "NotificationType", "NotificationCreate", "NotificationRead",
 ]

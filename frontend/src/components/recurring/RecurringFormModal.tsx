@@ -1,7 +1,9 @@
-import { useState, useEffect, FormEvent } from "react";
+import { useState, useEffect } from "react";
+import type { FormEvent } from "react";
 import { X } from "lucide-react";
 import { listCategories } from "../../api/categories";
 import type { RecurringTransaction, Category, TransactionType, RecurringFrequency } from "../../types";
+import { sanitizeAmountInput } from "../../utils/numberInput";
 
 interface Props {
   recurring: RecurringTransaction | null;
@@ -96,7 +98,7 @@ export function RecurringFormModal({ recurring, onClose, onSubmit }: Props) {
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <div>
-            <label className="block text-sm font-medium mb-1 text-ink-light dark:text-ink-dark">Nombre</label>
+            <label className="block text-sm font-medium mb-1 text-ink-light dark:text-ink-dark">Concepto</label>
             <input value={name} onChange={(e) => setName(e.target.value)} required className="w-full px-3 py-2 rounded-lg border border-line-light dark:border-line-dark bg-transparent focus:outline-none focus:ring-2 focus:ring-accent" />
           </div>
 
@@ -108,7 +110,7 @@ export function RecurringFormModal({ recurring, onClose, onSubmit }: Props) {
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-sm font-medium mb-1 text-ink-light dark:text-ink-dark">Monto</label>
-              <input type="number" step="0.01" min="0" value={amount} onChange={(e) => setAmount(e.target.value)} required className="w-full px-3 py-2 rounded-lg border border-line-light dark:border-line-dark bg-transparent focus:outline-none focus:ring-2 focus:ring-accent" />
+              <input type="number" step="0.01" min="0" value={amount} onChange={(e) => setAmount(sanitizeAmountInput(e.target.value))} required className="w-full px-3 py-2 rounded-lg border border-line-light dark:border-line-dark bg-transparent focus:outline-none focus:ring-2 focus:ring-accent" />
             </div>
             <div>
               <label className="block text-sm font-medium mb-1 text-ink-light dark:text-ink-dark">Tipo</label>

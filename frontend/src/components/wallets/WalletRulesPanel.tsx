@@ -1,8 +1,10 @@
 import { useState, useEffect, useCallback } from "react";
 import { Plus, Pencil, Trash2, X } from "lucide-react";
 import { listWalletRules, createWalletRule, updateWalletRule, deleteWalletRule } from "../../api/walletRules";
+import type { WalletRulePayload } from "../../api/walletRules";
 import { listCategories } from "../../api/categories";
 import { WalletRuleFormModal } from "./WalletRuleFormModal";
+import { useToast } from "../../context/ToastContext";
 import type { Wallet, WalletRule, Category } from "../../types";
 
 const ruleTypeLabels: Record<string, string> = {
@@ -31,6 +33,7 @@ function describeRule(rule: WalletRule, categories: Category[]): string {
 }
 
 export function WalletRulesPanel({ wallet, onClose }: { wallet: Wallet; onClose: () => void }) {
+  const { toast } = useToast();
   const [rules, setRules] = useState<WalletRule[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -65,19 +68,28 @@ export function WalletRulesPanel({ wallet, onClose }: { wallet: Wallet; onClose:
     setModalOpen(true);
   }
 
-  async function handleSubmit(payload: Parameters<typeof createWalletRule>[0]) {
+  // El modal es agnostico a la cartera: entrega el payload SIN wallet_id.
+  // El panel, que conoce la cartera, lo inyecta al crear (al editar no se
+  // cambia de cartera, por eso el update no lo toca).
+  async function handleSubmit(payload: Omit<WalletRulePayload, "wallet_id">) {
     if (editing) {
       await updateWalletRule(editing.id, payload);
     } else {
       await createWalletRule({ ...payload, wallet_id: wallet.id });
     }
     await load();
+    toast.success(editing ? "Regla actualizada." : "Regla creada.");
   }
 
   async function handleDelete(rule: WalletRule) {
     if (!confirm("¿Eliminar esta regla?")) return;
-    await deleteWalletRule(rule.id);
-    await load();
+    try {
+      await deleteWalletRule(rule.id);
+      await load();
+      toast.success("Regla eliminada.");
+    } catch {
+      toast.error("No se pudo eliminar la regla.");
+    }
   }
 
   return (
@@ -124,7 +136,7 @@ export function WalletRulesPanel({ wallet, onClose }: { wallet: Wallet; onClose:
       )}
 
       {modalOpen && (
-        <WalletRuleFormModal walletId={wallet.id} rule={editing} onClose={() => setModalOpen(false)} onSubmit={handleSubmit} />
+        <WalletRuleFormModal rule={editing} onClose={() => setModalOpen(false)} onSubmit={handleSubmit} />
       )}
     </div>
   );

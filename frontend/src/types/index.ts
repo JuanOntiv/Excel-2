@@ -1,8 +1,11 @@
+
 export type TransactionType = "income" | "expense";
 export type CategoryType = "income" | "expense" | "both";
 export type WalletRuleType = "Category" | "TransactionType" | "Keyword" | "DateRange" | "AmountRange";
 export type RecurringFrequency = "Daily" | "Weekly" | "Biweekly" | "Monthly" | "Yearly";
 export type RecurringStatus = "active" | "paused" | "cancelled";
+export type GoalType = "income" | "expense_limit" | "savings";
+export type GoalStatus = "active" | "achieved" | "failed" | "cancelled";
 
 
 export interface User {
@@ -25,8 +28,6 @@ export interface TokenResponse {
   refresh_token: string;
   token_type: string;
 }
-
-export type TransactionType = "income" | "expense";
 
 export interface Transaction {
   id: string;
@@ -85,6 +86,30 @@ export interface Wallet {
   updated_at: string;
 }
 
+export interface Goal {
+  id: string;
+  user_id: string;
+  name: string;
+  description: string | null;
+  goal_type: GoalType;
+  target_amount: number;
+  start_date: string; // ISO date
+  end_date: string; // ISO date
+  wallet_id: string | null; // null = todas las transacciones
+  category_id: string | null; // null = todas las categorías
+  status: GoalStatus;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface GoalProgress extends Goal {
+  current_amount: number;
+  remaining: number;
+  percentage: number;
+  is_on_track: boolean;
+}
+
 export interface WalletRule {
   id: string;
   user_id: string;
@@ -100,4 +125,36 @@ export interface WalletRule {
   is_active: boolean;
   created_at: string;
   updated_at: string;
+}
+
+export type NotificationType =
+  | "RECURRING_EXECUTED"
+  | "RECURRING_PENDING"
+  | "GOAL_ACHIEVED"
+  | "GOAL_EXCEEDED"
+  | "GOAL_FAILED";
+
+export interface AppNotification {
+  id: string;
+  type: NotificationType;
+  title: string;
+  message: string;
+  is_read: boolean;
+  entity_type: string | null;
+  entity_id: string | null;
+  created_at: string;
+  read_at: string | null;
+}
+
+export type LogAction = "CREATE" | "READ" | "UPDATE" | "DELETE" | "LOGIN" | "LOGOUT";
+export type LogLevel = "INFO" | "WARNING" | "ERROR" | "SECURITY";
+
+export interface ActivityLog {
+  id: string;
+  user_id: string | null;
+  action: LogAction;
+  level: LogLevel;
+  table: string | null;
+  detail: string | null;
+  created_at: string;
 }

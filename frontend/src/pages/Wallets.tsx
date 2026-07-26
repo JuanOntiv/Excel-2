@@ -4,10 +4,13 @@ import { Plus, Pencil, Trash2, Star, Settings2 } from "lucide-react";
 import { listWallets, createWallet, updateWallet, deleteWallet } from "../api/wallets";
 import { WalletFormModal } from "../components/wallets/WalletFormModal";
 import { WalletRulesPanel } from "../components/wallets/WalletRulesPanel";
+import { NotificationBell } from "../components/notifications/NotificationBell";
+import { useToast } from "../context/ToastContext";
 import type { Wallet } from "../types";
 
 export default function Wallets() {
   const navigate = useNavigate();
+  const { toast } = useToast();
   const [wallets, setWallets] = useState<Wallet[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
@@ -45,13 +48,19 @@ export default function Wallets() {
       await createWallet(payload);
     }
     await load();
+    toast.success(editing ? "Cartera actualizada." : "Cartera creada.");
   }
 
   async function handleDelete(w: Wallet) {
     if (!confirm(`¿Eliminar "${w.name}"?`)) return;
-    await deleteWallet(w.id);
-    if (expandedWalletId === w.id) setExpandedWalletId(null);
-    await load();
+    try {
+      await deleteWallet(w.id);
+      if (expandedWalletId === w.id) setExpandedWalletId(null);
+      await load();
+      toast.success("Cartera eliminada.");
+    } catch {
+      toast.error("No se pudo eliminar la cartera.");
+    }
   }
 
   function toggleRules(w: Wallet) {
@@ -64,10 +73,13 @@ export default function Wallets() {
     <div>
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-semibold text-ink-light dark:text-ink-dark">Carteras</h1>
-        <button onClick={openCreate} className="flex items-center gap-2 px-4 py-2 rounded-lg bg-accent text-white font-medium hover:opacity-90">
-          <Plus size={18} />
-          Nueva
-        </button>
+        <div className="flex items-center gap-2">
+          <NotificationBell align="right" />
+          <button onClick={openCreate} className="flex items-center gap-2 px-4 py-2 rounded-lg bg-accent text-white font-medium hover:opacity-90">
+            <Plus size={18} />
+            Nueva
+          </button>
+        </div>
       </div>
 
       <p className="text-sm text-ink-muted-light dark:text-ink-muted-dark mb-4">

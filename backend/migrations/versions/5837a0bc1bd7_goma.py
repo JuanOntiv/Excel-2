@@ -1,8 +1,8 @@
-"""Fix models imports, and fix passwords/tokens
+"""GOMA
 
-Revision ID: 218c00c1b5b5
-Revises: c0c7e2a1816c
-Create Date: 2026-07-12 04:06:23.636651
+Revision ID: 5837a0bc1bd7
+Revises: dbb947dc5f41
+Create Date: 2026-07-21 02:30:42.738597
 
 """
 from typing import Sequence, Union
@@ -12,8 +12,8 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision: str = '218c00c1b5b5'
-down_revision: Union[str, Sequence[str], None] = 'c0c7e2a1816c'
+revision: str = '5837a0bc1bd7'
+down_revision: Union[str, Sequence[str], None] = 'dbb947dc5f41'
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 

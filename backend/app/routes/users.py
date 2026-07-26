@@ -9,9 +9,10 @@ from sqlmodel import Session, select
 from app.db.db import get_session
 from app.models.users import User, UserCreate, UserUpdate, UserRead
 from app.models.logs import LogAction, LogLevel
-from app.utils.password import hash_password, verify_password
+from app.utils.password import hash_password, verify_password, validate_password_strength
 from app.auth.dependencies import get_current_user
 from app.auth.dependencies_admin import get_current_admin
+from app.auth.jwt import revoke_all_user_tokens
 from app.utils.logs_decorator import log_action
 from app.services.wallets import create_default_wallet
 
@@ -20,6 +21,10 @@ router = APIRouter(prefix="/users", tags=["Users"])
 
 class ChangePasswordRequest(BaseModel):
     current_password: str
+    new_password: str
+
+
+class AdminResetPasswordRequest(BaseModel):
     new_password: str
 
 
@@ -35,6 +40,11 @@ def register_user(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Email already registered",
         )
+
+    try:
+        validate_password_strength(user_data.password)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
 
     db_user = User(
         name=user_data.name,
@@ -102,11 +112,10 @@ def change_my_password(
             detail="Current password is incorrect",
         )
 
-    if not body.new_password:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="New password cannot be empty",
-        )
+    try:
+        validate_password_strength(body.new_password)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
 
     current_user.password = hash_password(body.new_password)
     current_user.updated_at = datetime.now()
@@ -183,6 +192,57 @@ def deactivate_user_admin(
     return {"message": "User deactivated successfully", "user_id": str(user_id)}
 
 
+@router.post("/{user_id}/reactivate", status_code=status.HTTP_200_OK)
+@log_action(action=LogAction.UPDATE, table="users")
+def reactivate_user_admin(
+    user_id: UUID,
+    session: Session = Depends(get_session),
+    current_admin: User = Depends(get_current_admin),
+):
+    """Reactiva (is_active=True) una cuenta previamente desactivada.
+    Contraparte de DELETE /{user_id}/deactivate."""
+    user = session.get(User, user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    user.is_active = True
+    user.updated_at = datetime.now()
+    session.add(user)
+    session.commit()
+    return {"message": "User reactivated successfully", "user_id": str(user_id)}
+
+
+@router.post("/{user_id}/reset-password", status_code=status.HTTP_200_OK)
+@log_action(action=LogAction.UPDATE, level=LogLevel.WARNING, table="users")
+def reset_user_password_admin(
+    user_id: UUID,
+    body: AdminResetPasswordRequest,
+    session: Session = Depends(get_session),
+    current_admin: User = Depends(get_current_admin),
+):
+    """Un admin fija una nueva contrasena para un usuario sin conocer la
+    anterior (a diferencia de POST /users/me/change-password). Revoca
+    todos los refresh tokens del usuario para forzar re-login en todos
+    sus dispositivos. No permite tocar la contrasena de OTRO admin."""
+    user = session.get(User, user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    if user.is_admin and user.id != current_admin.id:
+        raise HTTPException(status_code=400, detail="Cannot reset another admin's password")
+    try:
+        validate_password_strength(body.new_password)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
+
+    user.password = hash_password(body.new_password)
+    user.updated_at = datetime.now()
+    session.add(user)
+    # revoke_all_user_tokens hace su propio commit, persistiendo tambien
+    # el cambio de password pendiente en la misma transaccion.
+    revoke_all_user_tokens(user.id, session)
+    return {"message": "Password reset successfully", "user_id": str(user_id)}
+
+
 @router.delete("/{user_id}/hard", status_code=status.HTTP_200_OK)
 @log_action(action=LogAction.DELETE, level=LogLevel.ERROR, table="users")
 def hard_delete_user_admin(
@@ -208,6 +268,8 @@ def hard_delete_user_admin(
     from app.models.wallet_rules import WalletRule
     from app.models.wallets import Wallet
     from app.models.categories import Category
+    from app.models.goals import Goal
+    from app.models.user_category_preferences import UserCategoryPreference
 
     # Orden importante: primero las tablas "hoja" que referencian a
     # transacciones/wallets, luego transacciones/wallets/reglas, y por
@@ -223,7 +285,19 @@ def hard_delete_user_admin(
         ).all():
             session.delete(tw)
 
-    for model in (Transaction, RecurringTransaction, WalletRule, Wallet, Category):
+    # Goal y UserCategoryPreference deben borrarse ANTES que Wallet/Category:
+    # Goal referencia wallet_id/category_id y la preferencia referencia
+    # category_id (incluso categorias globales), asi que dejarlas para el
+    # final provocaria una violacion de FK.
+    for model in (
+        Transaction,
+        RecurringTransaction,
+        WalletRule,
+        Goal,
+        UserCategoryPreference,
+        Wallet,
+        Category,
+    ):
         for row in session.exec(select(model).where(model.user_id == user_id)).all():
             session.delete(row)
 

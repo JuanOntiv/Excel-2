@@ -3,28 +3,78 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 @theme {
-  /* Fondos: cálidos, no blanco/negro puro */
-  --color-surface-light: #faf8f5;      /* fondo principal claro, crema suave */
-  --color-surface-dark: #211f1c;       /* fondo principal oscuro, carbón cálido */
+  /* Tipografía: display con carácter para headers, sans limpia para texto largo, mono para montos */
+  --font-sans: "Public Sans", ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-display: "Bricolage Grotesque", "Public Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+
+  /* Escala tipográfica ampliada (más grande y con más aire que el default de Tailwind) */
+  --text-xs: 0.8125rem;
+  --text-xs--line-height: 1.125rem;
+  --text-sm: 0.9375rem;
+  --text-sm--line-height: 1.375rem;
+  --text-base: 1.0625rem;
+  --text-base--line-height: 1.625rem;
+  --text-lg: 1.1875rem;
+  --text-lg--line-height: 1.75rem;
+  --text-xl: 1.375rem;
+  --text-xl--line-height: 1.875rem;
+  --text-2xl: 1.75rem;
+  --text-2xl--line-height: 2.125rem;
+  --text-3xl: 2.125rem;
+  --text-3xl--line-height: 2.375rem;
+  --text-4xl: 2.75rem;
+  --text-4xl--line-height: 3rem;
+
+  /* Fondos: fríos, con salto real de contraste entre fondo y tarjetas */
+  --color-surface-light: #f5f7fa;
+  --color-surface-dark: #0a0e14;
   --color-surface-elevated-light: #ffffff;
-  --color-surface-elevated-dark: #2b2823; /* tarjetas/sidebar en oscuro */
+  --color-surface-elevated-dark: #121822;
 
   /* Texto */
-  --color-ink-light: #292420;
-  --color-ink-dark: #ece7e0;
-  --color-ink-muted-light: #746c63;
-  --color-ink-muted-dark: #a39a8e;
+  --color-ink-light: #10151c;
+  --color-ink-dark: #e8ecf1;
+  --color-ink-muted-light: #64748b;
+  --color-ink-muted-dark: #8b95a5;
 
   /* Bordes */
-  --color-line-light: #e8e2d9;
-  --color-line-dark: #3a352f;
+  --color-line-light: #e2e8f0;
+  --color-line-dark: #1f2733;
 
-  /* Acento: un teal profundo, ni frío-azul ni el terracota genérico */
-  --color-accent: #0f766e;
-  --color-accent-soft: #ccfbf1;
-  --color-accent-dark: #2dd4bf;
+  /* Acento primario: azul */
+  --color-accent: #2563eb;
+  --color-accent-soft: #dbeafe;
+  --color-accent-dark: #60a5fa; /* variante clara, usada con dark: para mantener contraste sobre fondos oscuros */
 
-  /* Estados */
-  --color-positive: #15803d;
-  --color-negative: #b91c1c;
+  /* Acento secundario / pop: turquesa */
+  --color-accent2: #2dd4bf;
+  --color-accent2-soft: #99f6e4;
+
+  /* Estados (valores probados con contraste AA sobre superficies claras y oscuras) */
+  --color-positive: #047857;
+  --color-negative: #dc2626;
+}
+
+/* Aplica las fuentes por defecto a toda la app. */
+body {
+  font-family: var(--font-sans);
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--font-display);
+}
+
+/* Entrada de los toasts (ver components/ui/Toaster.tsx). */
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(-0.5rem);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }

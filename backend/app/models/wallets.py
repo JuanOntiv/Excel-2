@@ -52,7 +52,7 @@ class Wallet(SQLModel, table=True):
 
     description: Optional[str] = Field(
         default=None,
-        sa_column=Column(String(150),nullable=False)
+        sa_column=Column(String(150), nullable=True)
     )
 
     is_default: bool = Field(

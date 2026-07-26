@@ -11,6 +11,8 @@ from app.routes import (
     transactions_wallets,
     recurring_transactions,
     logs,
+    goals,
+    notifications
 )
 
 app = FastAPI(title="Finanzas API", version="1.0.0")
@@ -38,6 +40,8 @@ app.include_router(transactions.router)
 app.include_router(transactions_wallets.router)
 app.include_router(recurring_transactions.router)
 app.include_router(logs.router)
+app.include_router(goals.router)
+app.include_router(notifications.router)
 
 
 @app.get("/")
