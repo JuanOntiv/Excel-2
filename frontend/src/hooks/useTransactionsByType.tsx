@@ -4,7 +4,9 @@ import { getPeriodRange, getPreviousPeriodRange } from "../utils/date";
 import type { Transaction, TransactionType } from "../types";
 import type { Period } from "../utils/date";
 
-export function useTransactionsByType(type: TransactionType, period: Period) {
+// walletId acota a una cartera concreta (server-side, via Transaction_Wallets).
+// null/undefined = todas, que es el comportamiento de la cartera default.
+export function useTransactionsByType(type: TransactionType, period: Period, walletId?: string | null) {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   // Suma del periodo INMEDIATAMENTE anterior (para la comparación). null = el
   // periodo no tiene uno previo ("todo").
@@ -21,10 +23,11 @@ export function useTransactionsByType(type: TransactionType, period: Period) {
     try {
       const range = getPeriodRange(period);
       const prevRange = getPreviousPeriodRange(period);
+      const walletParam = walletId ? { wallet_id: walletId } : {};
 
       const [current, previous] = await Promise.all([
-        listTransactions({ ...range, limit: 5000 }),
-        prevRange ? listTransactions({ ...prevRange, limit: 5000 }) : Promise.resolve([]),
+        listTransactions({ ...range, ...walletParam, limit: 5000 }),
+        prevRange ? listTransactions({ ...prevRange, ...walletParam, limit: 5000 }) : Promise.resolve([]),
       ]);
 
       setTransactions(current.filter((t) => t.type === type));
@@ -42,7 +45,7 @@ export function useTransactionsByType(type: TransactionType, period: Period) {
     } finally {
       setIsLoading(false);
     }
-  }, [type, period]);
+  }, [type, period, walletId]);
 
   useEffect(() => {
     load();

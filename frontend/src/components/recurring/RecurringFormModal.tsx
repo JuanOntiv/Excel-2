@@ -3,7 +3,7 @@ import type { FormEvent } from "react";
 import { X } from "lucide-react";
 import { listCategories } from "../../api/categories";
 import type { RecurringTransaction, Category, TransactionType, RecurringFrequency } from "../../types";
-import { sanitizeAmountInput } from "../../utils/numberInput";
+import { sanitizeAmountInput, parseAmountInput } from "../../utils/numberInput";
 
 interface Props {
   recurring: RecurringTransaction | null;
@@ -58,7 +58,7 @@ export function RecurringFormModal({ recurring, onClose, onSubmit }: Props) {
     e.preventDefault();
     setError(null);
 
-    const parsedAmount = parseFloat(amount);
+    const parsedAmount = parseAmountInput(amount);
     if (isNaN(parsedAmount) || parsedAmount <= 0) {
       setError("El monto debe ser un número mayor a 0.");
       return;
@@ -110,7 +110,10 @@ export function RecurringFormModal({ recurring, onClose, onSubmit }: Props) {
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-sm font-medium mb-1 text-ink-light dark:text-ink-dark">Monto</label>
-              <input type="number" step="0.01" min="0" value={amount} onChange={(e) => setAmount(sanitizeAmountInput(e.target.value))} required className="w-full px-3 py-2 rounded-lg border border-line-light dark:border-line-dark bg-transparent focus:outline-none focus:ring-2 focus:ring-accent" />
+              <div className="relative">
+                <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-ink-muted-light dark:text-ink-muted-dark">$</span>
+                <input type="text" inputMode="decimal" value={amount} onChange={(e) => setAmount(sanitizeAmountInput(e.target.value))} required className="w-full pl-7 pr-3 py-2 rounded-lg border border-line-light dark:border-line-dark bg-transparent focus:outline-none focus:ring-2 focus:ring-accent" />
+              </div>
             </div>
             <div>
               <label className="block text-sm font-medium mb-1 text-ink-light dark:text-ink-dark">Tipo</label>

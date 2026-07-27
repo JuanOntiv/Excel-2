@@ -3,10 +3,18 @@
 // ninguno de los dos navegadores filtra el pegado. Por eso se sanea el valor
 // en cada cambio en vez de intentar bloquear teclas.
 
-/** Deja solo dígitos y un único punto decimal; todo lo demás (letras, +, -, e, puntos extra) se descarta. */
+/** Deja solo dígitos y un único separador decimal (punto o coma); todo lo demás (letras, +, -, e, separadores extra) se descarta. */
 export function sanitizeAmountInput(raw: string): string {
-  const cleaned = raw.replace(/[^0-9.]/g, "");
-  const [whole, ...rest] = cleaned.split(".");
-  if (rest.length === 0) return whole;
-  return whole + "." + rest.join("");
+  const cleaned = raw.replace(/[^0-9.,]/g, "");
+  const separatorIndex = cleaned.search(/[.,]/);
+  if (separatorIndex === -1) return cleaned;
+  const whole = cleaned.slice(0, separatorIndex).replace(/[.,]/g, "");
+  const separator = cleaned[separatorIndex];
+  const rest = cleaned.slice(separatorIndex + 1).replace(/[.,]/g, "");
+  return whole + separator + rest;
+}
+
+/** Convierte un valor saneado por sanitizeAmountInput a número, aceptando coma o punto como separador decimal. */
+export function parseAmountInput(value: string): number {
+  return parseFloat(value.replace(",", "."));
 }

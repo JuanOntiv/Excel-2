@@ -38,6 +38,9 @@ export interface Transaction {
   type: TransactionType;
   date: string; // ISO date
   category_id: string;
+  // Cartera asignada manualmente. null = sin cartera específica ("General").
+  // Las carteras asignadas por regla NO aparecen aquí (ver wallet_assignment.py).
+  wallet_id: string | null;
   is_active: boolean;
   created_at: string;
   updated_at: string;

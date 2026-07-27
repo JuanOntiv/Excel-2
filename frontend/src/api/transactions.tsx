@@ -75,7 +75,7 @@ export async function createTransaction(payload: {
   date: string;
   type: TransactionType;
   category_id: string;
-  wallet_id?: string;
+  wallet_id?: string | null;
 }) {
   const { data } = await apiClient.post<Transaction>("/transactions", payload);
   return data;
@@ -95,7 +95,9 @@ export async function updateTransaction(
     amount: number;
     date: string;
     category_id: string;
-    wallet_id: string;
+    // null = quitar la asignación manual. Debe ir explícito: el backend usa
+    // exclude_unset, así que omitirlo significa "no toques la cartera".
+    wallet_id: string | null;
   }>
 ) {
   const { data } = await apiClient.patch<Transaction>(`/transactions/${id}`, payload);

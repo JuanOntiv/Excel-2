@@ -1,12 +1,15 @@
 import { useState, useEffect } from "react";
 import type { FormEvent } from "react";
 import { X } from "lucide-react";
-import type { Transaction, Category, TransactionType } from "../../types";
-import { sanitizeAmountInput } from "../../utils/numberInput";
+import type { Transaction, Category, TransactionType, Wallet } from "../../types";
+import { sanitizeAmountInput, parseAmountInput } from "../../utils/numberInput";
 
 interface Props {
   type: TransactionType;
   categories: Category[];
+  wallets: Wallet[];
+  /** Cartera activa en la vista: pre-llena el campo al crear. null = "General". */
+  defaultWalletId: string | null;
   transaction: Transaction | null;
   onClose: () => void;
   onSubmit: (payload: {
@@ -15,19 +18,28 @@ interface Props {
     amount: number;
     date: string;
     category_id: string;
+    wallet_id: string | null;
   }) => Promise<void>;
 }
 
-export function TransactionFormModal({ type, categories, transaction, onClose, onSubmit }: Props) {
+export function TransactionFormModal({ type, categories, wallets, defaultWalletId, transaction, onClose, onSubmit }: Props) {
   const [name, setName] = useState(transaction?.name ?? "");
   const [description, setDescription] = useState(transaction?.description ?? "");
   const [amount, setAmount] = useState(transaction?.amount?.toString() ?? "");
   const [date, setDate] = useState(transaction?.date ? transaction.date.split("T")[0] : new Date().toISOString().split("T")[0]);
   const [categoryId, setCategoryId] = useState(transaction?.category_id ?? "");
+  // Al editar manda la cartera real de la transacción; al crear, la del contexto.
+  const [walletId, setWalletId] = useState<string>(
+    transaction ? transaction.wallet_id ?? "" : defaultWalletId ?? ""
+  );
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const relevantCategories = categories.filter((c) => c.type === type || c.type === "both");
+  // La cartera default es implícita (contiene todo), nunca se asigna a mano:
+  // asignarla crearía una fila en Transaction_Wallets, justo lo que el diseño
+  // del backend prohíbe (ver services/wallet_assignment.py).
+  const assignableWallets = wallets.filter((w) => !w.is_default);
 
   useEffect(() => {
     if (!categoryId && relevantCategories.length > 0) {
@@ -39,7 +51,7 @@ export function TransactionFormModal({ type, categories, transaction, onClose, o
     e.preventDefault();
     setError(null);
 
-    const parsedAmount = parseFloat(amount);
+    const parsedAmount = parseAmountInput(amount);
     if (isNaN(parsedAmount) || parsedAmount <= 0) {
       setError("El monto debe ser un número mayor a 0.");
       return;
@@ -51,7 +63,17 @@ export function TransactionFormModal({ type, categories, transaction, onClose, o
 
     setIsSubmitting(true);
     try {
-      await onSubmit({ name, description: description || undefined, amount: parsedAmount, date, category_id: categoryId });
+      // wallet_id va como null explícito (no undefined) a propósito: el backend
+      // usa exclude_unset, así que undefined significaría "no lo toques" y no se
+      // podría sacar una transacción de su cartera al editarla.
+      await onSubmit({
+        name,
+        description: description || undefined,
+        amount: parsedAmount,
+        date,
+        category_id: categoryId,
+        wallet_id: walletId || null,
+      });
       onClose();
     } catch {
       setError("No se pudo guardar la transacción.");
@@ -86,7 +108,10 @@ export function TransactionFormModal({ type, categories, transaction, onClose, o
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-sm font-medium mb-1 text-ink-light dark:text-ink-dark">Monto</label>
-              <input type="number" step="0.01" min="0" value={amount} onChange={(e) => setAmount(sanitizeAmountInput(e.target.value))} required className="w-full px-3 py-2 rounded-lg border border-line-light dark:border-line-dark bg-transparent focus:outline-none focus:ring-2 focus:ring-accent" />
+              <div className="relative">
+                <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-ink-muted-light dark:text-ink-muted-dark">$</span>
+                <input type="text" inputMode="decimal" value={amount} onChange={(e) => setAmount(sanitizeAmountInput(e.target.value))} required className="w-full pl-7 pr-3 py-2 rounded-lg border border-line-light dark:border-line-dark bg-transparent focus:outline-none focus:ring-2 focus:ring-accent" />
+              </div>
             </div>
             <div>
               <label className="block text-sm font-medium mb-1 text-ink-light dark:text-ink-dark">Fecha</label>
@@ -100,6 +125,16 @@ export function TransactionFormModal({ type, categories, transaction, onClose, o
               {relevantCategories.length === 0 && <option value="">Sin categorías disponibles</option>}
               {relevantCategories.map((c) => (
                 <option key={c.id} value={c.id}>{c.name}</option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium mb-1 text-ink-light dark:text-ink-dark">Cartera</label>
+            <select value={walletId} onChange={(e) => setWalletId(e.target.value)} className="w-full px-3 py-2 rounded-lg border border-line-light dark:border-line-dark bg-transparent focus:outline-none focus:ring-2 focus:ring-accent">
+              <option value="">General (sin cartera específica)</option>
+              {assignableWallets.map((w) => (
+                <option key={w.id} value={w.id}>{w.name}</option>
               ))}
             </select>
           </div>

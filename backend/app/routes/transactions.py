@@ -8,6 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import StreamingResponse
 from openpyxl import Workbook
 from sqlmodel import Session, select
+from sqlalchemy.orm import selectinload
 
 from app.db.db import get_session
 from app.models.transactions import Transaction, TransactionCreate, TransactionUpdate, TransactionRead, TransactionType
@@ -137,6 +138,10 @@ def list_transactions(
     end_date: Optional[date] = None,
 ):
     query = _build_transaction_query(current_user, session, type, category_id, wallet_id, start_date, end_date)
+    # Sin esto, serializar wallet_id (property que recorre transaction_wallets)
+    # dispara una query por transaccion. El frontend pide limit alto, asi que
+    # el N+1 seria real: selectinload lo resuelve con UNA query extra en total.
+    query = query.options(selectinload(Transaction.transaction_wallets))
     return session.exec(query.offset(skip).limit(limit)).all()
 
 

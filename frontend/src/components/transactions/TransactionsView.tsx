@@ -1,10 +1,12 @@
 import { useState, useEffect, useRef } from "react";
-import { Plus, TrendingUp, TrendingDown, Trophy, CalendarDays, Download } from "lucide-react";
+import { Plus, TrendingUp, TrendingDown, Trophy, CalendarDays, Download, Wallet as WalletIcon } from "lucide-react";
 import { useTransactionsByType } from "../../hooks/useTransactionsByType";
 import { useAllTransactionsByType } from "../../hooks/useAllTransactionsByType";
+import { useSelectedWallet } from "../../hooks/useSelectedWallet";
 import { useConfirm } from "../../context/ConfirmContext";
 import { useToast } from "../../context/ToastContext";
 import { listCategories } from "../../api/categories";
+import { listWallets } from "../../api/wallets";
 import { createTransaction, updateTransaction, deleteTransaction, exportTransactions } from "../../api/transactions";
 import { TimeBarChart } from "../charts/TimeBarChart";
 import { CategoryDonut } from "../charts/CategoryDonut";
@@ -15,7 +17,7 @@ import type { TxFilters } from "./TransactionFilters";
 import { TransactionFormModal } from "./TransactionFormModal";
 import { NotificationBell } from "../notifications/NotificationBell";
 import { formatCurrency, getPeriodRange, PERIOD_OPTIONS, PERIOD_COMPARISON_LABEL } from "../../utils/date";
-import type { Transaction, Category, TransactionType } from "../../types";
+import type { Transaction, Category, TransactionType, Wallet } from "../../types";
 import type { Period } from "../../utils/date";
 
 // El verde de "Ingresos" es el mismo tono --color-positive (ver index.css),
@@ -46,11 +48,16 @@ export function TransactionsView({ type }: { type: TransactionType }) {
   const { toast } = useToast();
   const confirm = useConfirm();
   const [period, setPeriod] = useState<Period>("month");
-  const { transactions, previousTotal, previousTransactions, isLoading, error, reload } = useTransactionsByType(type, period);
+  // Cartera activa: es CONTEXTO, no un filtro de tabla. Acota tarjetas,
+  // gráficas e historial por igual, y define en qué cartera nacen los
+  // movimientos nuevos. Se recuerda entre Ingresos/Egresos y al recargar.
+  const [selectedWalletId, setSelectedWalletId] = useSelectedWallet();
+  const { transactions, previousTotal, previousTransactions, isLoading, error, reload } = useTransactionsByType(type, period, selectedWalletId);
   // Historial: independiente del periodo elegido arriba, siempre trae todo
   // (paginado en la tabla) para que cambiar de periodo no lo recalcule.
-  const { transactions: allTransactions, isLoading: isLoadingAll, error: allError, reload: reloadAll } = useAllTransactionsByType(type);
+  const { transactions: allTransactions, isLoading: isLoadingAll, error: allError, reload: reloadAll } = useAllTransactionsByType(type, selectedWalletId);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [wallets, setWallets] = useState<Wallet[]>([]);
   const [filters, setFilters] = useState<TxFilters>(EMPTY_FILTERS);
   const [modalOpen, setModalOpen] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
@@ -63,7 +70,16 @@ export function TransactionsView({ type }: { type: TransactionType }) {
 
   useEffect(() => {
     listCategories().then(setCategories).catch(() => {});
+    listWallets().then(setWallets).catch(() => {});
   }, []);
+
+  // Si la cartera recordada ya no existe (se borró en otra sesión), volvemos a
+  // "Todas": si no, cada carga pediría un wallet_id que el backend rechaza con 404.
+  useEffect(() => {
+    if (wallets.length && selectedWalletId && !wallets.some((w) => w.id === selectedWalletId)) {
+      setSelectedWalletId(null);
+    }
+  }, [wallets, selectedWalletId, setSelectedWalletId]);
 
   useEffect(() => {
     if (!exportMenuOpen) return;
@@ -86,7 +102,7 @@ export function TransactionsView({ type }: { type: TransactionType }) {
     setModalOpen(true);
   }
 
-  async function handleSubmit(payload: { name: string; description?: string; amount: number; date: string; category_id: string }) {
+  async function handleSubmit(payload: { name: string; description?: string; amount: number; date: string; category_id: string; wallet_id: string | null }) {
     if (editingTransaction) {
       await updateTransaction(editingTransaction.id, payload);
     } else {
@@ -119,6 +135,7 @@ export function TransactionsView({ type }: { type: TransactionType }) {
         type,
         ...range,
         category_id: filters.categoryId || undefined,
+        wallet_id: selectedWalletId || undefined,
       });
       toast.success("Exportación lista.");
     } catch {
@@ -136,6 +153,10 @@ export function TransactionsView({ type }: { type: TransactionType }) {
   const totalDelta = previousTotal !== null ? pctChange(total, previousTotal) : null;
   const previousMonthlyAvg = previousTotal !== null ? previousTotal / monthsSpanned(previousTransactions) : null;
   const monthlyAvgDelta = previousMonthlyAvg !== null ? pctChange(monthlyAvg, previousMonthlyAvg) : null;
+
+  // La cartera default es implícita ("todo"), así que no es una opción del
+  // selector: para eso está "Todas las carteras", que no manda wallet_id.
+  const assignableWallets = wallets.filter((w) => !w.is_default);
 
   // El filtro de categoría solo ofrece las categorías presentes en el historial completo.
   const presentCategoryIds = new Set(allTransactions.map((t) => t.category_id));
@@ -186,21 +207,38 @@ export function TransactionsView({ type }: { type: TransactionType }) {
         </div>
       </div>
 
-      {/* Selector de periodo */}
-      <div className="flex flex-wrap gap-2 mb-6">
-        {PERIOD_OPTIONS.map((o) => (
-          <button
-            key={o.value}
-            onClick={() => setPeriod(o.value)}
-            className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-              period === o.value
-                ? "bg-accent text-white"
-                : "border border-line-light dark:border-line-dark text-ink-muted-light dark:text-ink-muted-dark hover:text-ink-light dark:hover:text-ink-dark"
-            }`}
+      {/* Periodo (acota tarjetas/gráficas) + cartera (acota todo, y define
+          dónde nacen los movimientos nuevos). */}
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
+        <div className="flex flex-wrap gap-2">
+          {PERIOD_OPTIONS.map((o) => (
+            <button
+              key={o.value}
+              onClick={() => setPeriod(o.value)}
+              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                period === o.value
+                  ? "bg-accent text-white"
+                  : "border border-line-light dark:border-line-dark text-ink-muted-light dark:text-ink-muted-dark hover:text-ink-light dark:hover:text-ink-dark"
+              }`}
+            >
+              {o.label}
+            </button>
+          ))}
+        </div>
+
+        <div className="flex items-center gap-2">
+          <WalletIcon size={16} className="text-ink-muted-light dark:text-ink-muted-dark shrink-0" />
+          <select
+            value={selectedWalletId ?? ""}
+            onChange={(e) => setSelectedWalletId(e.target.value || null)}
+            className="px-3 py-1.5 rounded-lg text-sm font-medium border border-line-light dark:border-line-dark bg-surface-elevated-light dark:bg-surface-elevated-dark text-ink-light dark:text-ink-dark focus:outline-none focus:ring-2 focus:ring-accent"
           >
-            {o.label}
-          </button>
-        ))}
+            <option value="">General</option>
+            {assignableWallets.map((w) => (
+              <option key={w.id} value={w.id}>{w.name}</option>
+            ))}
+          </select>
+        </div>
       </div>
 
       {isLoading ? (
@@ -263,7 +301,7 @@ export function TransactionsView({ type }: { type: TransactionType }) {
       )}
 
       {modalOpen && (
-        <TransactionFormModal type={type} categories={categories} transaction={editingTransaction} onClose={() => setModalOpen(false)} onSubmit={handleSubmit} />
+        <TransactionFormModal type={type} categories={categories} wallets={wallets} defaultWalletId={selectedWalletId} transaction={editingTransaction} onClose={() => setModalOpen(false)} onSubmit={handleSubmit} />
       )}
     </div>
   );

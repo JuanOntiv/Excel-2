@@ -5,6 +5,10 @@ from sqlalchemy import String, DECIMAL, Date
 from typing import Optional, TYPE_CHECKING
 from enum import Enum
 
+# Import en runtime (no TYPE_CHECKING) porque la property wallet_id lo evalua.
+# No hay ciclo: transactions_wallets solo importa este modulo bajo TYPE_CHECKING.
+from app.models.transactions_wallets import AssignmentType
+
 if TYPE_CHECKING:
     from app.models.users import User
     from app.models.categories import Category
@@ -46,6 +50,7 @@ class TransactionRead(SQLModel):
 	type: TransactionType
 	date: datetime
 	category_id: UUID
+	wallet_id: Optional[UUID] = None  # cartera asignada manualmente (ver property en Transaction)
 	is_active: bool
 	created_at: datetime
 	updated_at: datetime
@@ -113,3 +118,19 @@ class Transaction(SQLModel, table=True):
     user: "User" = Relationship(back_populates="transactions")
     category: "Category" = Relationship(back_populates="transactions")
     transaction_wallets: list["TransactionWallet"] = Relationship(back_populates="transaction")
+
+    @property
+    def wallet_id(self) -> Optional[UUID]:
+        """Cartera asignada MANUALMENTE, o None si no tiene.
+
+        Las asignaciones por regla quedan fuera a proposito: son derivadas,
+        puede haber varias, y no son lo que el usuario eligio en el formulario.
+        Sirve para pre-llenar el form de edicion en el frontend.
+
+        Ojo: quien liste transacciones debe usar selectinload(transaction_wallets)
+        o esto provoca un N+1 (ver list_transactions).
+        """
+        for assignment in self.transaction_wallets:
+            if assignment.assignment_type == AssignmentType.MANUAL:
+                return assignment.wallet_id
+        return None
