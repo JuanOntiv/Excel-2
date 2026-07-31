@@ -1,10 +1,10 @@
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import type { FormEvent } from "react";
 import { X } from "lucide-react";
-import { listWallets } from "../../api/wallets";
-import { listCategories } from "../../api/categories";
-import type { Goal, GoalType, Wallet, Category } from "../../types";
+import { useWallets } from "../../hooks/useWallets";
+import { useCategories } from "../../hooks/useCategories";
+import type { Goal, GoalType } from "../../types";
 import type { GoalPayload } from "../../api/goals";
 import { sanitizeAmountInput } from "../../utils/numberInput";
 
@@ -30,15 +30,10 @@ export function GoalFormModal({ goal, onClose, onSubmit }: Props) {
   const [walletId, setWalletId] = useState(goal?.wallet_id ?? "");
   const [categoryId, setCategoryId] = useState(goal?.category_id ?? "");
 
-  const [wallets, setWallets] = useState<Wallet[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
+  const { wallets } = useWallets();
+  const { categories } = useCategories();
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-  useEffect(() => {
-    listWallets().then(setWallets).catch(() => setWallets([]));
-    listCategories().then(setCategories).catch(() => setCategories([]));
-  }, []);
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();

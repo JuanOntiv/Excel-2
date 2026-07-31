@@ -69,16 +69,21 @@ export function TransactionTable({ transactions, categories, onEdit, onDelete }:
   }
 
   return (
-    <div className="rounded-xl border border-line-light dark:border-line-dark bg-surface-elevated-light dark:bg-surface-elevated-dark overflow-hidden">
+    // Categoría y Fecha se ocultan en pantallas angostas: ambas siguen
+    // disponibles al desplegar la fila, así que la tabla cabe sin scroll
+    // horizontal en móvil en vez de aplastar Concepto y Monto.
+    // Ojo: el ancho útil no crece de forma monótona con el viewport (a partir
+    // de `md` aparece el sidebar de 14rem), por eso Categoría espera hasta `lg`.
+    <div className="rounded-xl border border-line-light dark:border-line-dark bg-surface-elevated-light dark:bg-surface-elevated-dark overflow-x-auto">
       <table className="w-full text-sm">
         <thead>
           <tr className="border-b border-line-light dark:border-line-dark text-left text-ink-muted-light dark:text-ink-muted-dark">
-            <th className="px-4 py-3 font-medium w-8" />
-            <th className="px-4 py-3 font-medium">Concepto</th>
-            <th className="px-4 py-3 font-medium">Categoría</th>
-            <th className="px-4 py-3 font-medium">Fecha</th>
-            <th className="px-4 py-3 font-medium text-right">Monto</th>
-            {showActions && <th className="px-4 py-3 font-medium text-right">Acciones</th>}
+            <th className="px-2 sm:px-4 py-3 font-medium w-8" />
+            <th className="px-2 sm:px-4 py-3 font-medium">Concepto</th>
+            <th className="hidden lg:table-cell px-4 py-3 font-medium">Categoría</th>
+            <th className="hidden sm:table-cell px-4 py-3 font-medium">Fecha</th>
+            <th className="px-2 sm:px-4 py-3 font-medium text-right">Monto</th>
+            {showActions && <th className="px-2 sm:px-4 py-3 font-medium text-right">Acciones</th>}
           </tr>
         </thead>
         <tbody>
@@ -94,7 +99,7 @@ export function TransactionTable({ transactions, categories, onEdit, onDelete }:
             return (
             <Fragment key={t.id}>
             <tr className="border-b border-line-light dark:border-line-dark last:border-0">
-              <td className="px-4 py-3">
+              <td className="px-2 sm:px-4 py-3">
                 <button
                   onClick={() => toggleExpanded(t.id)}
                   title={isExpanded ? "Ocultar detalles" : "Ver detalles"}
@@ -103,10 +108,10 @@ export function TransactionTable({ transactions, categories, onEdit, onDelete }:
                   <ChevronRight size={16} className={`transition-transform duration-200 ${isExpanded ? "rotate-90" : ""}`} />
                 </button>
               </td>
-              <td className="px-4 py-3">
-                <span className="inline-flex items-center gap-2">{t.name}</span>
+              <td className="px-2 sm:px-4 py-3">
+                <span className="inline-flex items-center gap-2 break-words">{t.name}</span>
               </td>
-              <td className="px-4 py-3 text-ink-muted-light dark:text-ink-muted-dark">
+              <td className="hidden lg:table-cell px-4 py-3 text-ink-muted-light dark:text-ink-muted-dark">
                 <span className="inline-flex items-center gap-2">
                   <span
                     className="w-2 h-2 rounded-full shrink-0"
@@ -115,10 +120,10 @@ export function TransactionTable({ transactions, categories, onEdit, onDelete }:
                   {categoryName(t.category_id)}
                 </span>
               </td>
-              <td className="px-4 py-3 text-ink-muted-light dark:text-ink-muted-dark">{new Date(t.date).toLocaleDateString("es-MX")}</td>
-              <td className="px-4 py-3 text-right font-medium font-mono tabular-nums">{formatCurrency(t.amount)}</td>
+              <td className="hidden sm:table-cell px-4 py-3 text-ink-muted-light dark:text-ink-muted-dark whitespace-nowrap">{new Date(t.date).toLocaleDateString("es-MX")}</td>
+              <td className="px-2 sm:px-4 py-3 text-right font-medium font-mono tabular-nums whitespace-nowrap">{formatCurrency(t.amount)}</td>
               {showActions && (
-                <td className="px-4 py-3">
+                <td className="px-2 sm:px-4 py-3">
                   <div className="flex justify-end gap-2">
                     {onEdit && (
                       <button onClick={() => onEdit(t)} className="cursor-pointer text-ink-muted-light dark:text-ink-muted-dark hover:text-accent">
@@ -139,8 +144,8 @@ export function TransactionTable({ transactions, categories, onEdit, onDelete }:
                 isExpanded ? "border-b bg-surface-light/60 dark:bg-surface-dark/40" : ""
               }`}
             >
-              <td className="px-4" />
-              <td colSpan={showActions ? 5 : 4} className="px-4">
+              <td className="px-2 sm:px-4" />
+              <td colSpan={showActions ? 5 : 4} className="px-2 sm:px-4 pr-4">
                 <div className={`grid transition-[grid-template-rows] duration-200 ease-in-out ${isExpanded ? "grid-rows-[1fr]" : "grid-rows-[0fr]"}`}>
                   <div className="overflow-hidden">
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-6 gap-y-3 text-sm py-4">

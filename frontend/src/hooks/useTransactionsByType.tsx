@@ -1,55 +1,44 @@
-import { useState, useEffect, useCallback } from "react";
-import { listTransactions } from "../api/transactions";
+import { useMemo } from "react";
+import { useTransactionsStore } from "../store/transactionsStore";
+import { byType, byWallet, byPeriod } from "../store/selectors";
 import { getPeriodRange, getPreviousPeriodRange } from "../utils/date";
 import type { Transaction, TransactionType } from "../types";
 import type { Period } from "../utils/date";
 
 // walletId acota a una cartera concreta (server-side, via Transaction_Wallets).
 // null/undefined = todas, que es el comportamiento de la cartera default.
+//
+// Lee directo de la cache en memoria (ver store/transactionsStore): cambiar
+// de periodo/tipo/cartera solo recalcula filtros, no dispara requests.
 export function useTransactionsByType(type: TransactionType, period: Period, walletId?: string | null) {
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
-  // Suma del periodo INMEDIATAMENTE anterior (para la comparación). null = el
-  // periodo no tiene uno previo ("todo").
-  const [previousTotal, setPreviousTotal] = useState<number | null>(null);
+  const items = useTransactionsStore((s) => s.items);
+  const status = useTransactionsStore((s) => s.status);
+  const error = useTransactionsStore((s) => s.error);
+
+  const scoped = useMemo(() => byWallet(byType(items, type), walletId), [items, type, walletId]);
+
+  const range = useMemo(() => getPeriodRange(period), [period]);
+  const prevRange = useMemo(() => getPreviousPeriodRange(period), [period]);
+
+  const transactions = useMemo(() => byPeriod(scoped, range), [scoped, range]);
+
   // Movimientos del periodo anterior (para calcular su propio promedio
-  // mensual, no solo la suma).
-  const [previousTransactions, setPreviousTransactions] = useState<Transaction[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  // mensual, no solo la suma). null = el periodo no tiene uno previo ("todo").
+  const previousTransactions: Transaction[] = useMemo(
+    () => (prevRange ? byPeriod(scoped, prevRange) : []),
+    [scoped, prevRange]
+  );
 
-  const load = useCallback(async () => {
-    setIsLoading(true);
-    setError(null);
-    try {
-      const range = getPeriodRange(period);
-      const prevRange = getPreviousPeriodRange(period);
-      const walletParam = walletId ? { wallet_id: walletId } : {};
+  const previousTotal = prevRange
+    ? previousTransactions.reduce((s, t) => s + t.amount, 0)
+    : null;
 
-      const [current, previous] = await Promise.all([
-        listTransactions({ ...range, ...walletParam, limit: 5000 }),
-        prevRange ? listTransactions({ ...prevRange, ...walletParam, limit: 5000 }) : Promise.resolve([]),
-      ]);
-
-      setTransactions(current.filter((t) => t.type === type));
-
-      if (prevRange) {
-        const prevFiltered = previous.filter((t) => t.type === type);
-        setPreviousTransactions(prevFiltered);
-        setPreviousTotal(prevFiltered.reduce((s, t) => s + t.amount, 0));
-      } else {
-        setPreviousTransactions([]);
-        setPreviousTotal(null);
-      }
-    } catch {
-      setError("No se pudieron cargar las transacciones.");
-    } finally {
-      setIsLoading(false);
-    }
-  }, [type, period, walletId]);
-
-  useEffect(() => {
-    load();
-  }, [load]);
-
-  return { transactions, previousTotal, previousTransactions, isLoading, error, reload: load };
+  return {
+    transactions,
+    previousTotal,
+    previousTransactions,
+    isLoading: status === "idle" || status === "loading",
+    error,
+    reload: () => useTransactionsStore.getState().refresh(),
+  };
 }

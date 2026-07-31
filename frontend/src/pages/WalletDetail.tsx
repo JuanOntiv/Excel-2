@@ -12,11 +12,11 @@ import {
   Receipt,
   Download,
 } from "lucide-react";
-import { getWallet, updateWallet } from "../api/wallets";
-import { listCategories } from "../api/categories";
 import { listWalletRules } from "../api/walletRules";
 import { exportTransactions } from "../api/transactions";
 import { useWalletTransactions } from "../hooks/useWalletTransactions";
+import { useCategories } from "../hooks/useCategories";
+import { useWalletsStore } from "../store/walletsStore";
 import { WalletFormModal } from "../components/wallets/WalletFormModal";
 import { WalletRulesPanel } from "../components/wallets/WalletRulesPanel";
 import { TimeBarChart } from "../components/charts/TimeBarChart";
@@ -28,7 +28,7 @@ import { SummaryCard } from "../components/dashboard/SummaryCard";
 import { NotificationBell } from "../components/notifications/NotificationBell";
 import { useToast } from "../context/ToastContext";
 import { formatCurrency, getPeriodRange, getPreviousPeriodRange, PERIOD_OPTIONS, PERIOD_COMPARISON_LABEL } from "../utils/date";
-import type { Wallet, Category, Transaction } from "../types";
+import type { Transaction } from "../types";
 import type { Period } from "../utils/date";
 
 /** Variación % vs. periodo anterior. null = sin base para comparar. */
@@ -53,10 +53,6 @@ export default function WalletDetail() {
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  const [wallet, setWallet] = useState<Wallet | null>(null);
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [isLoadingWallet, setIsLoadingWallet] = useState(true);
-  const [notFound, setNotFound] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [rulesOpen, setRulesOpen] = useState(false);
   const [filters, setFilters] = useState<TxFilters>(EMPTY_FILTERS);
@@ -66,23 +62,19 @@ export default function WalletDetail() {
   const [isExporting, setIsExporting] = useState(false);
   const exportMenuRef = useRef<HTMLDivElement>(null);
 
+  // La cartera viene de la cache en memoria (ver store/walletsStore), ya
+  // cargada por AppShell: no hace falta un GET /wallets/{id} propio.
+  const wallets = useWalletsStore((s) => s.items);
+  const walletsStatus = useWalletsStore((s) => s.status);
+  const isLoadingWallet = walletsStatus === "idle" || walletsStatus === "loading";
+  const wallet = walletId ? wallets.find((w) => w.id === walletId) ?? null : null;
+  const notFound = !isLoadingWallet && !wallet;
+  const { categories } = useCategories();
+
   const { transactions, isLoading: isLoadingTransactions, error } = useWalletTransactions(
     walletId ?? "",
     wallet?.is_default ?? false
   );
-
-  const loadWallet = useCallback(async () => {
-    if (!walletId) return;
-    setIsLoadingWallet(true);
-    try {
-      const data = await getWallet(walletId);
-      setWallet(data);
-    } catch {
-      setNotFound(true);
-    } finally {
-      setIsLoadingWallet(false);
-    }
-  }, [walletId]);
 
   // Contador junto a "Gestionar reglas": se recarga al cerrar el panel por si
   // se creó/borró alguna regla mientras estaba abierto.
@@ -90,11 +82,6 @@ export default function WalletDetail() {
     if (!walletId) return;
     listWalletRules(walletId).then((rules) => setRuleCount(rules.length)).catch(() => {});
   }, [walletId]);
-
-  useEffect(() => {
-    loadWallet();
-    listCategories().then(setCategories).catch(() => {});
-  }, [loadWallet]);
 
   useEffect(() => {
     if (wallet && !wallet.is_default) loadRuleCount();
@@ -118,8 +105,7 @@ export default function WalletDetail() {
 
   async function handleEditSubmit(payload: { name: string; description?: string }) {
     if (!walletId) return;
-    await updateWallet(walletId, payload);
-    await loadWallet();
+    await useWalletsStore.getState().update(walletId, payload);
     toast.success("Cartera actualizada.");
   }
 
@@ -232,32 +218,43 @@ export default function WalletDetail() {
         Carteras
       </button>
 
-      <div className="flex items-start justify-between mb-6">
-        <div>
-          <h1 className="text-2xl font-semibold text-ink-light dark:text-ink-dark">{wallet.name}</h1>
+      {/* Cuatro controles + el título no caben en una fila en móvil: la fila
+          envuelve y las etiquetas de los botones secundarios se ocultan
+          (quedan como icono con `title`), dejando solo el CTA con texto. */}
+      <div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-3 mb-6">
+        <div className="min-w-0">
+          <h1 className="text-xl sm:text-2xl font-semibold text-ink-light dark:text-ink-dark break-words">{wallet.name}</h1>
           {wallet.description && (
-            <p className="text-sm text-ink-muted-light dark:text-ink-muted-dark mt-1">{wallet.description}</p>
+            <p className="text-sm text-ink-muted-light dark:text-ink-muted-dark mt-1 break-words">{wallet.description}</p>
           )}
         </div>
         <div className="flex items-center gap-2 shrink-0">
-          <NotificationBell align="right" />
+          {/* En móvil ya está la campana de MobileHeader; esta es solo para desktop. */}
+          <div className="hidden md:block">
+            <NotificationBell align="right" />
+          </div>
           {!wallet.is_default && (
             <button
               onClick={() => (rulesOpen ? closeRulesPanel() : setRulesOpen(true))}
-              className="flex items-center gap-2 px-4 py-2 rounded-lg border border-line-dark dark:border-line-light bg-surface-dark/80 dark:bg-surface-light/80 text-ink-dark dark:text-ink-light font-medium hover:opacity-90"
+              title={rulesOpen ? "Ocultar reglas" : "Gestionar reglas"}
+              className="flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg border border-line-dark dark:border-line-light bg-surface-dark/80 dark:bg-surface-light/80 text-ink-dark dark:text-ink-light font-medium hover:opacity-90"
             >
-              <Settings2 size={16} />
-              {rulesOpen ? "Ocultar reglas" : `Gestionar reglas${ruleCount !== null ? ` (${ruleCount})` : ""}`}
+              <Settings2 size={16} className="shrink-0" />
+              <span className="hidden lg:inline">
+                {rulesOpen ? "Ocultar reglas" : `Gestionar reglas${ruleCount !== null ? ` (${ruleCount})` : ""}`}
+              </span>
+              {!rulesOpen && ruleCount !== null && <span className="lg:hidden">({ruleCount})</span>}
             </button>
           )}
           <div className="relative" ref={exportMenuRef}>
             <button
               onClick={() => setExportMenuOpen((o) => !o)}
               disabled={isExporting}
-              className="flex items-center gap-2 px-4 py-2 rounded-lg border border-line-dark dark:border-line-light bg-surface-dark/80 dark:bg-surface-light/80 text-ink-dark dark:text-ink-light font-medium hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
+              title="Exportar"
+              className="flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg border border-line-dark dark:border-line-light bg-surface-dark/80 dark:bg-surface-light/80 text-ink-dark dark:text-ink-light font-medium hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              <Download size={16} />
-              {isExporting ? "Exportando..." : "Exportar"}
+              <Download size={16} className="shrink-0" />
+              <span className="hidden lg:inline">{isExporting ? "Exportando..." : "Exportar"}</span>
             </button>
             {exportMenuOpen && (
               <div className="absolute right-0 mt-2 w-40 rounded-lg border border-line-light dark:border-line-dark bg-surface-elevated-light dark:bg-surface-elevated-dark shadow-lg overflow-hidden z-10">
@@ -278,9 +275,9 @@ export default function WalletDetail() {
           </div>
           <button
             onClick={() => setModalOpen(true)}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-accent text-white font-medium hover:opacity-90"
+            className="flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg bg-accent text-white font-medium hover:opacity-90"
           >
-            <Pencil size={16} />
+            <Pencil size={16} className="shrink-0" />
             Editar
           </button>
         </div>

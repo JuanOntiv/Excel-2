@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
 import type { FormEvent } from "react";
 import { X } from "lucide-react";
-import { listCategories } from "../../api/categories";
-import type { WalletRule, WalletRuleType, TransactionType, Category } from "../../types";
+import { useCategories } from "../../hooks/useCategories";
+import type { WalletRule, WalletRuleType, TransactionType } from "../../types";
 import type { WalletRulePayload } from "../../api/walletRules";
 import { sanitizeAmountInput } from "../../utils/numberInput";
 
@@ -21,7 +21,7 @@ const ruleTypeLabels: Record<WalletRuleType, string> = {
 };
 
 export function WalletRuleFormModal({ rule, onClose, onSubmit }: Props) {
-  const [categories, setCategories] = useState<Category[]>([]);
+  const { categories } = useCategories(false);
   const [ruleType, setRuleType] = useState<WalletRuleType>(rule?.rule_type ?? "Category");
   const [categoryId, setCategoryId] = useState(rule?.category_id ?? "");
   const [transactionType, setTransactionType] = useState<TransactionType>(rule?.transaction_type ?? "expense");
@@ -32,10 +32,6 @@ export function WalletRuleFormModal({ rule, onClose, onSubmit }: Props) {
   const [amountTo, setAmountTo] = useState(rule?.amount_to?.toString() ?? "");
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-  useEffect(() => {
-    listCategories(false).then(setCategories).catch(() => {});
-  }, []);
 
   useEffect(() => {
     if (!categoryId && categories.length > 0) setCategoryId(categories[0].id);

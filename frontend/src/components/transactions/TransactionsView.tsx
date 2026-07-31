@@ -3,11 +3,12 @@ import { Plus, TrendingUp, TrendingDown, Trophy, CalendarDays, Download, Wallet 
 import { useTransactionsByType } from "../../hooks/useTransactionsByType";
 import { useAllTransactionsByType } from "../../hooks/useAllTransactionsByType";
 import { useSelectedWallet } from "../../hooks/useSelectedWallet";
+import { useCategories } from "../../hooks/useCategories";
+import { useWallets } from "../../hooks/useWallets";
 import { useConfirm } from "../../context/ConfirmContext";
 import { useToast } from "../../context/ToastContext";
-import { listCategories } from "../../api/categories";
-import { listWallets } from "../../api/wallets";
-import { createTransaction, updateTransaction, deleteTransaction, exportTransactions } from "../../api/transactions";
+import { useTransactionsStore } from "../../store/transactionsStore";
+import { exportTransactions } from "../../api/transactions";
 import { TimeBarChart } from "../charts/TimeBarChart";
 import { CategoryDonut } from "../charts/CategoryDonut";
 import { SummaryCard } from "../dashboard/SummaryCard";
@@ -17,7 +18,7 @@ import type { TxFilters } from "./TransactionFilters";
 import { TransactionFormModal } from "./TransactionFormModal";
 import { NotificationBell } from "../notifications/NotificationBell";
 import { formatCurrency, getPeriodRange, PERIOD_OPTIONS, PERIOD_COMPARISON_LABEL } from "../../utils/date";
-import type { Transaction, Category, TransactionType, Wallet } from "../../types";
+import type { Transaction, TransactionType } from "../../types";
 import type { Period } from "../../utils/date";
 
 // El verde de "Ingresos" es el mismo tono --color-positive (ver index.css),
@@ -52,12 +53,12 @@ export function TransactionsView({ type }: { type: TransactionType }) {
   // gráficas e historial por igual, y define en qué cartera nacen los
   // movimientos nuevos. Se recuerda entre Ingresos/Egresos y al recargar.
   const [selectedWalletId, setSelectedWalletId] = useSelectedWallet();
-  const { transactions, previousTotal, previousTransactions, isLoading, error, reload } = useTransactionsByType(type, period, selectedWalletId);
+  const { transactions, previousTotal, previousTransactions, isLoading, error } = useTransactionsByType(type, period, selectedWalletId);
   // Historial: independiente del periodo elegido arriba, siempre trae todo
   // (paginado en la tabla) para que cambiar de periodo no lo recalcule.
-  const { transactions: allTransactions, isLoading: isLoadingAll, error: allError, reload: reloadAll } = useAllTransactionsByType(type, selectedWalletId);
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [wallets, setWallets] = useState<Wallet[]>([]);
+  const { transactions: allTransactions, isLoading: isLoadingAll, error: allError } = useAllTransactionsByType(type, selectedWalletId);
+  const { categories } = useCategories();
+  const { wallets } = useWallets();
   const [filters, setFilters] = useState<TxFilters>(EMPTY_FILTERS);
   const [modalOpen, setModalOpen] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
@@ -67,11 +68,6 @@ export function TransactionsView({ type }: { type: TransactionType }) {
 
   const config = typeConfig[type];
   const isIncome = type === "income";
-
-  useEffect(() => {
-    listCategories().then(setCategories).catch(() => {});
-    listWallets().then(setWallets).catch(() => {});
-  }, []);
 
   // Si la cartera recordada ya no existe (se borró en otra sesión), volvemos a
   // "Todas": si no, cada carga pediría un wallet_id que el backend rechaza con 404.
@@ -103,20 +99,19 @@ export function TransactionsView({ type }: { type: TransactionType }) {
   }
 
   async function handleSubmit(payload: { name: string; description?: string; amount: number; date: string; category_id: string; wallet_id: string | null }) {
+    const store = useTransactionsStore.getState();
     if (editingTransaction) {
-      await updateTransaction(editingTransaction.id, payload);
+      await store.update(editingTransaction.id, payload);
     } else {
-      await createTransaction({ ...payload, type });
+      await store.create({ ...payload, type });
     }
-    await Promise.all([reload(), reloadAll()]);
     toast.success(editingTransaction ? "Movimiento actualizado." : "Movimiento creado.");
   }
 
   async function handleDelete(t: Transaction) {
     if (!(await confirm({ message: `¿Eliminar "${t.name}"?`, tone: "danger" }))) return;
     try {
-      await deleteTransaction(t.id);
-      await Promise.all([reload(), reloadAll()]);
+      await useTransactionsStore.getState().remove(t.id);
       toast.success("Movimiento eliminado.");
     } catch {
       toast.error("No se pudo eliminar el movimiento.");
@@ -170,18 +165,25 @@ export function TransactionsView({ type }: { type: TransactionType }) {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-4">
-        <h1 className="text-2xl font-semibold text-ink-light dark:text-ink-dark">{config.label}</h1>
-        <div className="flex items-center gap-2">
-          <NotificationBell align="right" />
+      {/* flex-wrap + etiquetas que se ocultan en móvil: con el título, la
+          campana, "Exportar" y el CTA en una sola fila, a 375px el botón
+          principal quedaba cortado fuera de pantalla. */}
+      <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 mb-4">
+        <h1 className="text-xl sm:text-2xl font-semibold text-ink-light dark:text-ink-dark">{config.label}</h1>
+        <div className="flex items-center gap-2 shrink-0">
+          {/* En móvil ya está la campana de MobileHeader; esta es solo para desktop. */}
+          <div className="hidden md:block">
+            <NotificationBell align="right" />
+          </div>
           <div className="relative" ref={exportMenuRef}>
             <button
               onClick={() => setExportMenuOpen((o) => !o)}
               disabled={isExporting}
-              className="flex items-center gap-2 px-4 py-2 rounded-lg border border-line-dark dark:border-line-light bg-surface-dark/80 dark:bg-surface-light/80 text-ink-dark dark:text-ink-light font-medium hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
+              title="Exportar"
+              className="flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg border border-line-dark dark:border-line-light bg-surface-dark/80 dark:bg-surface-light/80 text-ink-dark dark:text-ink-light font-medium hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              <Download size={18} />
-              {isExporting ? "Exportando..." : "Exportar"}
+              <Download size={18} className="shrink-0" />
+              <span className="hidden sm:inline">{isExporting ? "Exportando..." : "Exportar"}</span>
             </button>
             {exportMenuOpen && (
               <div className="absolute right-0 mt-2 w-40 rounded-lg border border-line-light dark:border-line-dark bg-surface-elevated-light dark:bg-surface-elevated-dark shadow-lg overflow-hidden z-10">
@@ -200,9 +202,9 @@ export function TransactionsView({ type }: { type: TransactionType }) {
               </div>
             )}
           </div>
-          <button onClick={openCreateModal} className="flex items-center gap-2 px-4 py-2 rounded-lg bg-accent text-white font-medium hover:opacity-90">
-            <Plus size={18} />
-            Nuevo {config.singular}
+          <button onClick={openCreateModal} className="flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg bg-accent text-white font-medium hover:opacity-90 whitespace-nowrap">
+            <Plus size={18} className="shrink-0" />
+            Nuevo <span className="hidden sm:inline">{config.singular}</span>
           </button>
         </div>
       </div>

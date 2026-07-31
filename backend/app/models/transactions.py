@@ -51,6 +51,7 @@ class TransactionRead(SQLModel):
 	date: datetime
 	category_id: UUID
 	wallet_id: Optional[UUID] = None  # cartera asignada manualmente (ver property en Transaction)
+	wallet_ids: list[UUID] = []  # todas las carteras asociadas, manual + por regla
 	is_active: bool
 	created_at: datetime
 	updated_at: datetime
@@ -134,3 +135,14 @@ class Transaction(SQLModel, table=True):
             if assignment.assignment_type == AssignmentType.MANUAL:
                 return assignment.wallet_id
         return None
+
+    @property
+    def wallet_ids(self) -> list[UUID]:
+        """Todas las carteras asociadas (manual + por regla), sin duplicados.
+
+        A diferencia de wallet_id, esto es lo que el filtro ?wallet_id= del
+        backend realmente usa (join contra Transaction_Wallets). El frontend
+        lo necesita para replicar ese filtrado en cache sin perder las
+        asignaciones por regla.
+        """
+        return list({assignment.wallet_id for assignment in self.transaction_wallets})

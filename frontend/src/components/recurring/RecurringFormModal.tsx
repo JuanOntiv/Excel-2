@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
 import type { FormEvent } from "react";
 import { X } from "lucide-react";
-import { listCategories } from "../../api/categories";
-import type { RecurringTransaction, Category, TransactionType, RecurringFrequency } from "../../types";
+import { useCategories } from "../../hooks/useCategories";
+import type { RecurringTransaction, TransactionType, RecurringFrequency } from "../../types";
 import { sanitizeAmountInput, parseAmountInput } from "../../utils/numberInput";
 
 interface Props {
@@ -29,7 +29,7 @@ const frequencyLabels: Record<RecurringFrequency, string> = {
 };
 
 export function RecurringFormModal({ recurring, onClose, onSubmit }: Props) {
-  const [categories, setCategories] = useState<Category[]>([]);
+  const { categories } = useCategories(false);
   const [name, setName] = useState(recurring?.name ?? "");
   const [description, setDescription] = useState(recurring?.description ?? "");
   const [amount, setAmount] = useState(recurring?.amount?.toString() ?? "");
@@ -43,10 +43,6 @@ export function RecurringFormModal({ recurring, onClose, onSubmit }: Props) {
 
   const isEditing = !!recurring;
   const relevantCategories = categories.filter((c) => c.type === type || c.type === "both");
-
-  useEffect(() => {
-    listCategories(false).then(setCategories).catch(() => {});
-  }, []);
 
   useEffect(() => {
     if (!categoryId && relevantCategories.length > 0) {

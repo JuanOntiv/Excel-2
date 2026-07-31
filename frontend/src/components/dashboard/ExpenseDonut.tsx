@@ -49,7 +49,9 @@ export function ExpenseDonut({ transactions, categories, title = "Distribución 
     <div className="rounded-xl border border-line-light dark:border-line-dark bg-surface-elevated-light dark:bg-surface-elevated-dark p-5">
       <h3 className="text-base font-semibold text-ink-light dark:text-ink-dark mb-4">{title}</h3>
 
-      <div className="flex items-center gap-5">
+      {/* Se apila en móvil: la dona (220px) + leyenda lado a lado aplastaba la
+          leyenda a un puñado de px en pantallas angostas. */}
+      <div className="flex flex-col sm:flex-row items-center gap-5">
         {/* Dona con el total al centro */}
         <div className="relative shrink-0" style={{ width: 220, height: 220 }}>
           <ResponsiveContainer width="100%" height="100%">
@@ -68,8 +70,8 @@ export function ExpenseDonut({ transactions, categories, title = "Distribución 
           </div>
         </div>
 
-        {/* Leyenda a la derecha: nombre + monto por categoría */}
-        <ul className="flex-1 min-w-0 flex flex-col gap-1 max-h-[220px] overflow-y-auto">
+        {/* Leyenda: a la derecha en pantallas anchas, debajo en móvil */}
+        <ul className="w-full flex-1 min-w-0 flex flex-col gap-1 max-h-[220px] overflow-y-auto">
           {data.map((d, i) => (
             <li
               key={i}

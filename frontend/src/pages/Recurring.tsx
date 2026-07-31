@@ -10,21 +10,21 @@ import {
   executeRecurringNow,
   listPendingConfirmation,
 } from "../api/recurring";
-import { listCategories } from "../api/categories";
+import { useCategories } from "../hooks/useCategories";
 import { RecurringTable } from "../components/recurring/RecurringTable";
 import { RecurringFormModal } from "../components/recurring/RecurringFormModal";
 import { PendingConfirmationBanner } from "../components/recurring/PendingConfirmationBanner";
 import { NotificationBell } from "../components/notifications/NotificationBell";
 import { useConfirm } from "../context/ConfirmContext";
 import { useToast } from "../context/ToastContext";
-import type { RecurringTransaction, Category } from "../types";
+import type { RecurringTransaction } from "../types";
 
 export default function Recurring() {
   const { toast } = useToast();
   const confirm = useConfirm();
+  const { categories } = useCategories(false);
   const [items, setItems] = useState<RecurringTransaction[]>([]);
   const [pending, setPending] = useState<RecurringTransaction[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<RecurringTransaction | null>(null);
@@ -32,14 +32,12 @@ export default function Recurring() {
   const load = useCallback(async () => {
     setIsLoading(true);
     try {
-      const [recurringData, pendingData, categoriesData] = await Promise.all([
+      const [recurringData, pendingData] = await Promise.all([
         listRecurring(),
         listPendingConfirmation(),
-        listCategories(false),
       ]);
       setItems(recurringData);
       setPending(pendingData);
-      setCategories(categoriesData);
     } finally {
       setIsLoading(false);
     }
@@ -115,12 +113,15 @@ export default function Recurring() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-semibold text-ink-light dark:text-ink-dark">Transacciones recurrentes</h1>
-        <div className="flex items-center gap-2">
-          <NotificationBell align="right" />
-          <button onClick={openCreate} className="flex items-center gap-2 px-4 py-2 rounded-lg bg-accent text-white font-medium hover:opacity-90">
-            <Plus size={18} />
+      <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 mb-6">
+        <h1 className="text-xl sm:text-2xl font-semibold text-ink-light dark:text-ink-dark">Transacciones recurrentes</h1>
+        <div className="flex items-center gap-2 shrink-0">
+          {/* En móvil ya está la campana de MobileHeader; esta es solo para desktop. */}
+          <div className="hidden md:block">
+            <NotificationBell align="right" />
+          </div>
+          <button onClick={openCreate} className="flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg bg-accent text-white font-medium hover:opacity-90">
+            <Plus size={18} className="shrink-0" />
             Nueva
           </button>
         </div>

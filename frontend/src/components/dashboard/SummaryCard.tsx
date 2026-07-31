@@ -78,10 +78,10 @@ function DeltaRow({
 export function SummaryCard({ label, value, icon, tone = "neutral", delta, higherIsBetter, subtitle, deltaLabel }: SummaryCardProps) {
   return (
     <div className="rounded-xl border border-line-light dark:border-line-dark bg-surface-elevated-light dark:bg-surface-elevated-dark p-5">
-      <div className="flex items-start justify-between">
-        <div>
-          <p className="text-[15px] font-medium text-ink-muted-light dark:text-ink-muted-dark mb-1">{label}</p>
-          <p className={`text-3xl font-bold font-mono tabular-nums ${valueTone[tone]}`}>{value}</p>
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-[15px] font-medium text-ink-muted-light dark:text-ink-muted-dark mb-1 truncate">{label}</p>
+          <p className={`text-2xl sm:text-3xl font-bold font-mono tabular-nums truncate ${valueTone[tone]}`}>{value}</p>
           {subtitle && (
             <p className="mt-1 text-sm text-ink-muted-light dark:text-ink-muted-dark truncate">{subtitle}</p>
           )}

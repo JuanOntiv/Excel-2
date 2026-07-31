@@ -1,7 +1,8 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Plus, Pencil, Trash2, Star } from "lucide-react";
-import { listWallets, createWallet, updateWallet, deleteWallet } from "../api/wallets";
+import { useWallets } from "../hooks/useWallets";
+import { useWalletsStore } from "../store/walletsStore";
 import { WalletFormModal } from "../components/wallets/WalletFormModal";
 import { WalletRulesPanel } from "../components/wallets/WalletRulesPanel";
 import { NotificationBell } from "../components/notifications/NotificationBell";
@@ -13,24 +14,9 @@ export default function Wallets() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const confirm = useConfirm();
-  const [wallets, setWallets] = useState<Wallet[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const { wallets, isLoading } = useWallets();
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<Wallet | null>(null);
-
-  const load = useCallback(async () => {
-    setIsLoading(true);
-    try {
-      const data = await listWallets();
-      setWallets(data);
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    load();
-  }, [load]);
 
   function openCreate() {
     setEditing(null);
@@ -43,20 +29,19 @@ export default function Wallets() {
   }
 
   async function handleSubmit(payload: { name: string; description?: string }) {
+    const store = useWalletsStore.getState();
     if (editing) {
-      await updateWallet(editing.id, payload);
+      await store.update(editing.id, payload);
     } else {
-      await createWallet(payload);
+      await store.create(payload);
     }
-    await load();
     toast.success(editing ? "Cartera actualizada." : "Cartera creada.");
   }
 
   async function handleDelete(w: Wallet) {
     if (!(await confirm({ message: `¿Eliminar "${w.name}"?`, tone: "danger" }))) return;
     try {
-      await deleteWallet(w.id);
-      await load();
+      await useWalletsStore.getState().remove(w.id);
       toast.success("Cartera eliminada.");
     } catch {
       toast.error("No se pudo eliminar la cartera.");
@@ -67,12 +52,15 @@ export default function Wallets() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-semibold text-ink-light dark:text-ink-dark">Carteras</h1>
-        <div className="flex items-center gap-2">
-          <NotificationBell align="right" />
-          <button onClick={openCreate} className="flex items-center gap-2 px-4 py-2 rounded-lg bg-accent text-white font-medium hover:opacity-90">
-            <Plus size={18} />
+      <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 mb-6">
+        <h1 className="text-xl sm:text-2xl font-semibold text-ink-light dark:text-ink-dark">Carteras</h1>
+        <div className="flex items-center gap-2 shrink-0">
+          {/* En móvil ya está la campana de MobileHeader; esta es solo para desktop. */}
+          <div className="hidden md:block">
+            <NotificationBell align="right" />
+          </div>
+          <button onClick={openCreate} className="flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg bg-accent text-white font-medium hover:opacity-90">
+            <Plus size={18} className="shrink-0" />
             Nueva
           </button>
         </div>
@@ -89,12 +77,12 @@ export default function Wallets() {
             onClick={() => navigate(`/wallets/${w.id}`)}
             className="rounded-xl border border-line-light dark:border-line-dark bg-surface-elevated-light dark:bg-surface-elevated-dark p-5 cursor-pointer hover:border-accent transition-colors"
           >
-            <div className="flex items-start justify-between mb-2">
-              <h3 className="font-medium text-ink-light dark:text-ink-dark flex items-center gap-1">
-                {w.name}
-                {w.is_default && <Star size={14} className="text-accent fill-accent" />}
+            <div className="flex items-start justify-between gap-2 mb-2">
+              <h3 className="min-w-0 font-medium text-ink-light dark:text-ink-dark flex items-center gap-1 break-words">
+                <span className="break-words">{w.name}</span>
+                {w.is_default && <Star size={14} className="text-accent fill-accent shrink-0" />}
               </h3>
-              <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
+              <div className="flex gap-2 shrink-0" onClick={(e) => e.stopPropagation()}>
                 <button onClick={() => openEdit(w)} className="text-ink-muted-light dark:text-ink-muted-dark hover:text-accent">
                   <Pencil size={16} />
                 </button>

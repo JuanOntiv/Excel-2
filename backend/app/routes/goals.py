@@ -76,20 +76,31 @@ def create_goal(
     return new_goal
 
 
-@router.get("/", response_model=List[GoalRead])
+@router.get("/", response_model=List[GoalProgressRead])
 def list_goals(
     session: Session = Depends(get_session),
     current_user: User = Depends(get_current_user),
     skip: int = 0,
     limit: int = 100,
 ):
+    """Devuelve las metas CON su progreso ya calculado.
+
+    El progreso viene inline a proposito: antes el frontend tenia que pedir
+    /goals/ y luego /goals/{id}/progress por cada meta (un N+1 de round-trips).
+    GoalProgressRead es un superset de GoalRead, asi que anadir los campos no
+    rompe a ningun consumidor previo. Cuesta N queries dentro de UNA peticion,
+    que es mucho mas barato que N peticiones.
+    """
     goals = session.exec(
         select(Goal)
         .where(Goal.user_id == current_user.id, Goal.is_active == True)
         .offset(skip)
         .limit(limit)
     ).all()
-    return goals
+    return [
+        GoalProgressRead(**goal.model_dump(), **compute_goal_progress(goal, session))
+        for goal in goals
+    ]
 
 
 # IMPORTANTE: declarar /progress ANTES de /{goal_id} para que la ruta dinamica

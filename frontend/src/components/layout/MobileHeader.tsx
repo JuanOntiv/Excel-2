@@ -10,13 +10,14 @@ export function MobileHeader() {
 
   return (
     <header className="md:hidden flex items-center justify-between h-14 px-4 border-b border-line-light dark:border-line-dark bg-surface-elevated-light dark:bg-surface-elevated-dark sticky top-0 z-40">
-      <div className="flex items-center gap-2">
-        <div className="w-7 h-7 rounded-full bg-accent-soft dark:bg-accent-dark/25 text-accent flex items-center justify-center text-xs font-semibold">
+      <div className="flex items-center gap-2 min-w-0">
+        <div className="w-7 h-7 rounded-full bg-accent-soft dark:bg-accent-dark/25 text-accent flex items-center justify-center text-xs font-semibold shrink-0">
           {user?.name?.[0]?.toUpperCase() ?? "?"}
         </div>
-        <span className="text-sm font-medium text-ink-light dark:text-ink-dark">{user?.name}</span>
+        {/* truncate: un nombre largo empujaba los iconos de la derecha fuera de pantalla. */}
+        <span className="text-sm font-medium text-ink-light dark:text-ink-dark truncate">{user?.name}</span>
       </div>
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2 shrink-0">
         <NotificationBell align="right" />
         <button
           onClick={toggleTheme}

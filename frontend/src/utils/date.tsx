@@ -98,8 +98,13 @@ export function getPreviousPeriodRange(period: Period): PeriodRange | null {
 }
 
 export function formatCurrency(amount: number): string {
-  return new Intl.NumberFormat("es-MX", {
-    style: "currency",
-    currency: "MXN", // ajusta si tu moneda es otra
-  }).format(amount);
+  // Formato numerico neutral (sin atar la app a una moneda especifica):
+  // agrupacion/decimales de es-MX con un simbolo $ generico antepuesto.
+  // El signo va antes del simbolo (-$1,234.00), no despues.
+  const formatted = new Intl.NumberFormat("es-MX", {
+    style: "decimal",
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(Math.abs(amount));
+  return (amount < 0 ? "-$" : "$") + formatted;
 }

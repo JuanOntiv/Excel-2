@@ -60,13 +60,16 @@ export default function Admin() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-2">
-        <h1 className="text-2xl font-semibold text-ink-light dark:text-ink-dark flex items-center gap-2">
-          <ShieldCheck size={22} className="text-accent" />
+      <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 mb-2">
+        <h1 className="text-xl sm:text-2xl font-semibold text-ink-light dark:text-ink-dark flex items-center gap-2">
+          <ShieldCheck size={22} className="text-accent shrink-0" />
           Administración
         </h1>
-        <div className="flex items-center gap-3">
-          <NotificationBell align="right" />
+        <div className="flex items-center gap-3 shrink-0">
+          {/* En móvil ya está la campana de MobileHeader; esta es solo para desktop. */}
+          <div className="hidden md:block">
+            <NotificationBell align="right" />
+          </div>
           <label className="flex items-center gap-2 text-sm text-ink-muted-light dark:text-ink-muted-dark">
             <input
               type="checkbox"

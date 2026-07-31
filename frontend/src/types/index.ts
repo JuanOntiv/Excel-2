@@ -14,6 +14,7 @@ export interface User {
   mail: string;
   is_active: boolean;
   is_admin: boolean;
+  avatar_key: string | null;
   created_at: string; // ISO string
   updated_at: string; // ISO string
 }
@@ -41,6 +42,9 @@ export interface Transaction {
   // Cartera asignada manualmente. null = sin cartera específica ("General").
   // Las carteras asignadas por regla NO aparecen aquí (ver wallet_assignment.py).
   wallet_id: string | null;
+  // Todas las carteras asociadas (manual + por regla). Es lo que replica en
+  // cliente el filtro ?wallet_id= del backend (ver TransactionsWallet).
+  wallet_ids: string[];
   is_active: boolean;
   created_at: string;
   updated_at: string;

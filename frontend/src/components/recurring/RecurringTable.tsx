@@ -43,16 +43,20 @@ export function RecurringTable({ items, categories, onEdit, onPause, onResume, o
     <div className="rounded-xl border border-line-light dark:border-line-dark bg-surface-elevated-light dark:bg-surface-elevated-dark overflow-x-auto">
       <table className="w-full text-sm">
         <thead>
+          {/* 9 columnas no caben en móvil ni de lejos. Se van ocultando de menos
+              a más relevante conforme se estrecha; todas siguen visibles al
+              desplegar la fila. El salto a `xl` es porque el sidebar (14rem)
+              se come ancho útil justo a partir de `md`. */}
           <tr className="border-b border-line-light dark:border-line-dark text-left text-ink-muted-light dark:text-ink-muted-dark">
-            <th className="px-4 py-3 font-medium w-8" />
-            <th className="px-4 py-3 font-medium">Concepto</th>
-            <th className="px-4 py-3 font-medium">Categoría</th>
-            <th className="px-4 py-3 font-medium">Frecuencia</th>
-            <th className="px-4 py-3 font-medium">Próxima ejecución</th>
-            <th className="px-4 py-3 font-medium">Estado</th>
-            <th className="px-4 py-3 font-medium">Automática</th>
-            <th className="px-4 py-3 font-medium text-right">Monto</th>
-            <th className="px-4 py-3 font-medium text-right">Acciones</th>
+            <th className="px-2 sm:px-4 py-3 font-medium w-8" />
+            <th className="px-2 sm:px-4 py-3 font-medium">Concepto</th>
+            <th className="hidden xl:table-cell px-4 py-3 font-medium">Categoría</th>
+            <th className="hidden lg:table-cell px-4 py-3 font-medium">Frecuencia</th>
+            <th className="hidden lg:table-cell px-4 py-3 font-medium">Próxima ejecución</th>
+            <th className="hidden sm:table-cell px-4 py-3 font-medium">Estado</th>
+            <th className="hidden xl:table-cell px-4 py-3 font-medium">Automática</th>
+            <th className="px-2 sm:px-4 py-3 font-medium text-right">Monto</th>
+            <th className="px-2 sm:px-4 py-3 font-medium text-right">Acciones</th>
           </tr>
         </thead>
         <tbody>
@@ -68,7 +72,7 @@ export function RecurringTable({ items, categories, onEdit, onPause, onResume, o
             return (
             <Fragment key={t.id}>
             <tr className="border-b border-line-light dark:border-line-dark last:border-0">
-              <td className="px-4 py-3">
+              <td className="px-2 sm:px-4 py-3">
                 <button
                   onClick={() => toggleExpanded(t.id)}
                   title={isExpanded ? "Ocultar detalles" : "Ver detalles"}
@@ -77,10 +81,10 @@ export function RecurringTable({ items, categories, onEdit, onPause, onResume, o
                   <ChevronRight size={16} className={`transition-transform duration-200 ${isExpanded ? "rotate-90" : ""}`} />
                 </button>
               </td>
-              <td className="px-4 py-3">
-                <span className="inline-flex items-center gap-2">{t.name}</span>
+              <td className="px-2 sm:px-4 py-3">
+                <span className="inline-flex items-center gap-2 break-words">{t.name}</span>
               </td>
-              <td className="px-4 py-3 text-ink-muted-light dark:text-ink-muted-dark">
+              <td className="hidden xl:table-cell px-4 py-3 text-ink-muted-light dark:text-ink-muted-dark">
                 <span className="inline-flex items-center gap-2">
                   <span
                     className="w-2 h-2 rounded-full shrink-0"
@@ -89,12 +93,12 @@ export function RecurringTable({ items, categories, onEdit, onPause, onResume, o
                   {categoryName(t.category_id)}
                 </span>
               </td>
-              <td className="px-4 py-3 text-ink-muted-light dark:text-ink-muted-dark">{frequencyLabels[t.frequency]}</td>
-              <td className="px-4 py-3 text-ink-muted-light dark:text-ink-muted-dark">
+              <td className="hidden lg:table-cell px-4 py-3 text-ink-muted-light dark:text-ink-muted-dark">{frequencyLabels[t.frequency]}</td>
+              <td className="hidden lg:table-cell px-4 py-3 text-ink-muted-light dark:text-ink-muted-dark whitespace-nowrap">
                 {t.status === "cancelled" ? "—" : new Date(t.next_execution).toLocaleDateString("es-MX")}
               </td>
-              <td className="px-4 py-3"><StatusBadge status={t.status} /></td>
-              <td className="px-4 py-3">
+              <td className="hidden sm:table-cell px-4 py-3"><StatusBadge status={t.status} /></td>
+              <td className="hidden xl:table-cell px-4 py-3">
                 <span
                   className={`inline-flex items-center gap-1 text-xs font-medium ${
                     t.auto_execute
@@ -108,13 +112,13 @@ export function RecurringTable({ items, categories, onEdit, onPause, onResume, o
                 </span>
               </td>
               <td
-                className={`px-4 py-3 text-right font-medium font-mono tabular-nums ${
+                className={`px-2 sm:px-4 py-3 text-right font-medium font-mono tabular-nums whitespace-nowrap ${
                   t.type === "income" ? "text-positive" : "text-negative"
                 }`}
               >
                 {formatCurrency(t.amount)}
               </td>
-              <td className="px-4 py-3">
+              <td className="px-2 sm:px-4 py-3">
                 <div className="flex justify-end gap-2">
                   {t.status === "active" && (
                     <>
@@ -150,8 +154,8 @@ export function RecurringTable({ items, categories, onEdit, onPause, onResume, o
                 isExpanded ? "border-b bg-surface-light/60 dark:bg-surface-dark/40" : ""
               }`}
             >
-              <td className="px-4" />
-              <td colSpan={8} className="px-4">
+              <td className="px-2 sm:px-4" />
+              <td colSpan={8} className="px-2 sm:px-4 pr-4">
                 <div className={`grid transition-[grid-template-rows] duration-200 ease-in-out ${isExpanded ? "grid-rows-[1fr]" : "grid-rows-[0fr]"}`}>
                   <div className="overflow-hidden">
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-6 gap-y-3 text-sm py-4">

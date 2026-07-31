@@ -9,7 +9,7 @@ A full-stack personal finance manager. Success criteria: a deployed, production-
 ## Stack
 
 - **Backend**: FastAPI, SQLModel, PostgreSQL, Alembic, Docker Compose, bcrypt (direct, not via `passlib` — compatibility issues with modern bcrypt), JWT (access + refresh, refresh tokens stored as SHA-256 hashes, rotated on use), `openpyxl` (server-side XLSX generation for the transactions export)
-- **Frontend**: React + TypeScript + Vite, Tailwind CSS **v4** (not v3 — this matters, see below), Zustand (transaction/filter state), Context API (auth, theme only), Recharts, React Router, Axios
+- **Frontend**: React + TypeScript + Vite, Tailwind CSS **v4** (not v3 — this matters, see below), Zustand (in-memory store layer for all entity data — see gotcha #13), Context API (auth, theme, toast, confirm, notifications), Recharts, React Router, Axios
 - **Docker-first**: everything runs via `docker compose`; migrations run via `docker compose exec backend alembic ...` from the host.
 
 ## Critical gotchas (things that will bite you if forgotten)
@@ -43,6 +43,22 @@ A full-stack personal finance manager. Success criteria: a deployed, production-
 
 12. **In FastAPI/Starlette, a static path and a dynamic `{param}` path at the same segment depth are matched in registration order, not by specificity.** `router.get("/{transaction_id}")` will happily swallow a request to `/summary` or `/export` if it's registered first — Starlette doesn't backtrack to try a later, better-matching route. `GET /transactions/summary` was already registered after `GET /transactions/{transaction_id}` before this was noticed; when the export endpoint was added (`GET /transactions/export`), it was deliberately placed *before* `/{transaction_id}` to avoid the same trap. Any new static sub-route under an existing resource router must go above the `{id}` routes, not below.
 
+13. **All entity data flows through an in-memory Zustand store layer (`src/store/`). Do not add a direct API call in a component.** Added 2026-07-30 to stop the same data being refetched by every view (entering Income used to cost 3 requests, switching period 2 more, switching to Expenses 3 more — all identical data).
+    - Four stores: `transactionsStore`, `categoriesStore`, `walletsStore`, `goalsStore`. Each exposes `bootstrap()` (idempotent — safe to call on every mount), `refresh()`, `reset()`, and CRUD methods that mutate the in-memory copy instead of refetching.
+    - `AppShell` calls all four `bootstrap()`s on mount; `AuthContext.logout` calls all four `reset()`s. **Adding a fifth store means touching both places** — miss the reset and the next user in the same browser session sees the previous user's data.
+    - **In memory only.** No `localStorage`/`sessionStorage`/HTTP cache — a page reload refetches everything. This was a deliberate call by Juan (simplicity over persistence); don't add persistence without asking.
+    - `transactionsStore` loads in batches of 500 and exposes `status: "partial"` while later batches are still arriving. **Anything that computes a total must wait for `"ready"`**, not `"partial"` — a total over a partial set looks exactly like a correct total. `Dashboard` gates on this; copy that pattern.
+    - Read via the hooks (`useCategories`, `useWallets`, `useTransactionsByType`, `useAllTransactionsByType`, `useWalletTransactions`) and the pure selectors in `store/selectors.ts`, not by subscribing to raw store state in every component.
+
+14. **The in-memory cache goes stale on server-side cascades, and it fails silently. Two known cascades — look for more before adding a mutation.**
+    - **Wallet rules → transaction assignments.** Creating/editing a rule runs `recalculate_assignments_for_rule`, which rewrites `transaction_wallets` for **every** transaction the user owns; deleting runs `remove_assignments_for_rule`. None of that touches the transaction rows themselves, so nothing signals the frontend. `WalletRulesPanel` therefore calls `useTransactionsStore.getState().refresh()` after every rule mutation. This was a real shipped bug: WalletDetail showed the wrong movements until a page reload.
+    - **Transactions → goal progress/status.** Writing a transaction changes every goal's computed progress, and `evaluate_goal_completions` can flip a goal to `ACHIEVED`/`FAILED` on the spot. `transactionsStore`'s create/update/remove call `useGoalsStore.getState().revalidate()` (a silent refetch that doesn't flash a loading state).
+    - The general rule: if a backend write has effects **beyond the row being written**, the store holding those other rows must be invalidated explicitly. Grep the service layer for what a route calls before assuming a mutation is local.
+
+15. **Goal progress is computed server-side and must stay there.** `GET /goals/` returns it inline (`GoalProgressRead`, a superset of `GoalRead`) — previously the frontend chained a `GET /goals/{id}/progress` per goal, an N+1 of round-trips. It is tempting to recompute progress in the browser from the transactions store (all the inputs are now available, including `wallet_ids`), and this was explicitly considered and rejected: the semantics in `services/goals.py` (`is_on_track` per `goal_type`, the wallet/category scoping) also drive status transitions and notifications, so a client-side copy would drift and report wrong numbers without ever erroring. Keep one source of truth.
+
+16. **`TransactionRead` has two wallet fields and they mean different things.** `wallet_id` = the **manual** assignment only (pre-fills the edit form). `wallet_ids` = **every** associated wallet, manual + rule-derived — this is what `GET /transactions?wallet_id=` actually matches on server-side, so it's the one client-side wallet filtering must use (`byWallet` in `store/selectors.ts`). Filtering the cache by `wallet_id` would silently drop every rule-assigned transaction.
+
 ## Known backend bugs found & fixed during frontend integration
 
 - `TransactionCreate.categoty_id` (typo) vs. route using `trx_in.category_id` → fixed to `category_id` in the model.
@@ -52,6 +68,14 @@ A full-stack personal finance manager. Success criteria: a deployed, production-
 - No endpoint existed to compute income/expense totals → added `GET /transactions/summary`.
 - No way to filter transactions by `type` → added `type` query param to `GET /transactions`.
 - `GET /transactions/summary` was itself a victim of gotcha #12 above: it got registered *below* `GET /transactions/{transaction_id}`, so every call 422'd (FastAPI tried to parse `"summary"` as a UUID) until the Dashboard was wired to actually call it (2026-07-20) and the bug surfaced. Fixed by moving `/summary` above `/{transaction_id}` in `routes/transactions.py`. Lesson: a static route existing "in the codebase" isn't proof it's reachable — verify with a real request, since it can be added in the wrong position and sit unused/untested for a while before something finally calls it.
+- `GET /transactions` had **no `ORDER BY`** at all, so `skip`/`limit` paged over an arbitrary Postgres ordering: "the 500 most recent" was not expressible, and paging could repeat or skip rows. Surfaced when the store layer needed batched loading (2026-07-30). Fixed with `.order_by(Transaction.date.desc(), Transaction.id.desc())` — the tiebreaker on `id` is what makes paging stable, not just the date.
+- `GET /goals/` returned bare `GoalRead`, forcing a `GET /goals/{id}/progress` per goal. Changed to return `GoalProgressRead` inline (2026-07-30). See gotcha #15.
+
+## Endpoints that exist but the frontend no longer calls
+
+Deliberately kept as valid API surface, not dead code to delete — but don't assume a change to them is exercised by the UI:
+- `GET /transactions/summary` — superseded by `summarize()` in `store/selectors.ts`, which computes the same four numbers from the in-memory store. The equivalence is exact, not approximate (both scope to `user_id + is_active` with no type/wallet filter); it was verified across 10 users × 3 date ranges with zero discrepancies before the switch.
+- `GET /goals/{id}/progress` — superseded by the inline progress on `GET /goals/`.
 
 ## Color system
 
@@ -80,13 +104,23 @@ src/
 │   ├── recurring.tsx        # CRUD + pause/resume/execute/execute-pending
 │   ├── wallets.tsx          # CRUD
 │   ├── walletRules.tsx      # CRUD, polymorphic payload by rule_type
-│   └── goals.tsx            # CRUD; progress (current_amount/percentage/is_on_track) comes back on the read model, computed server-side
-├── context/
-│   ├── AuthContext.tsx     # user, login, logout, refreshUser — also fires executePending() on login
-│   └── ThemeContext.tsx    # light/dark toggle, persisted to localStorage + <html class="dark">
-├── hooks/
-│   ├── useTransactionsByType.tsx   # shared data-fetching hook behind TransactionsView (Income/Expenses)
-│   └── useWalletTransactions.tsx   # data-fetching hook behind WalletDetail
+│   └── goals.tsx            # CRUD; listGoals() returns progress inline (current_amount/percentage/is_on_track), computed server-side
+├── store/                # Zustand, in-memory only. THE data layer — components read from here, not from api/. See gotchas #13–15.
+│   ├── transactionsStore.ts  # batched load (500/page), status idle|loading|partial|ready|error; CRUD mutates in place + invalidates goals
+│   ├── categoriesStore.ts    # always holds the superset (include_hidden=true); consumers filter !is_hidden client-side
+│   ├── walletsStore.ts       # plain list; WalletDetail resolves a single wallet out of it instead of GET /wallets/{id}
+│   ├── goalsStore.ts         # goals WITH server-computed progress; revalidate() = silent refetch for cross-store invalidation
+│   └── selectors.ts          # pure filters over the arrays: byType, byWallet (uses wallet_ids!), byPeriod, summarize
+├── context/                # UI concerns only — no entity data lives here (that's store/)
+│   ├── AuthContext.tsx     # user, login, logout, refreshUser — fires executePending() on login, reset()s every store on logout
+│   ├── ThemeContext.tsx    # light/dark toggle, persisted to localStorage + <html class="dark">
+│   └── ToastContext / ConfirmContext / NotificationContext
+├── hooks/                  # Thin read-only views over store/ — none of these fetch anymore
+│   ├── useTransactionsByType.tsx   # period-scoped slice + previous-period comparison, behind TransactionsView
+│   ├── useAllTransactionsByType.tsx # unscoped slice by type, behind the history table
+│   ├── useWalletTransactions.tsx   # wallet-scoped slice, behind WalletDetail
+│   ├── useCategories.tsx / useWallets.tsx  # store reads; useCategories(includeHidden) filters client-side
+│   └── useSelectedWallet.tsx       # localStorage-backed UI preference, not data
 ├── components/
 │   ├── layout/             # Sidebar (desktop), BottomNav + MobileHeader (mobile), AppShell (wraps both)
 │   ├── transactions/       # TransactionsView (generic, parametrized by type) + TransactionTable, TransactionFilters,
@@ -111,6 +145,10 @@ src/
 ```
 
 **Key reusability decision**: `TransactionsView` is generic over `type: "income" | "expense"` and used by both `Income.tsx` and `Expenses.tsx` — do not duplicate this component. Recurring and Wallets intentionally do **not** share this component; they have different domain concerns (see gotchas #9–10).
+
+**Layering rule**: `components/` and `pages/` → `hooks/` + `store/` → `api/`.
+
+The store layer covers **four** resources: transactions, categories, wallets, goals. For those, a component importing from `api/` directly is a bug — it bypasses the cache and reintroduces the duplicate-fetching the stores exist to kill. Everything else still calls `api/` directly and that's correct, because it has no store: `walletRules`, `recurring`, `logs`, `admin`, `users`, `auth`. One deliberate exception inside the covered four: `exportTransactions`, which streams a file to disk rather than holding state, so it stays a direct call from `TransactionsView` and `WalletDetail`.
 
 ## Things that are known-incomplete or intentionally deferred
 

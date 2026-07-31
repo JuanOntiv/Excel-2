@@ -213,8 +213,11 @@ export default function History() {
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-semibold text-ink-light dark:text-ink-dark">Historial</h1>
-        <NotificationBell align="right" />
+        <h1 className="text-xl sm:text-2xl font-semibold text-ink-light dark:text-ink-dark">Historial</h1>
+        {/* En móvil ya está la campana de MobileHeader; esta es solo para desktop. */}
+        <div className="hidden md:block">
+          <NotificationBell align="right" />
+        </div>
       </div>
 
       <p className="text-sm text-ink-muted-light dark:text-ink-muted-dark mb-4">

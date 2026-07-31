@@ -142,6 +142,9 @@ def list_transactions(
     # dispara una query por transaccion. El frontend pide limit alto, asi que
     # el N+1 seria real: selectinload lo resuelve con UNA query extra en total.
     query = query.options(selectinload(Transaction.transaction_wallets))
+    # Orden estable: sin esto, skip/limit no garantiza páginas consistentes
+    # (Postgres puede devolver el mismo row dos veces o saltarse otro).
+    query = query.order_by(Transaction.date.desc(), Transaction.id.desc())
     return session.exec(query.offset(skip).limit(limit)).all()
 
 

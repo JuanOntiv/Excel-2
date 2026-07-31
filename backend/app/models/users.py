@@ -28,6 +28,7 @@ class UserUpdate(SQLModel):
     mail: Optional[str] = None
     password: Optional[str] = None
     is_active: Optional[bool] = None
+    avatar_key: Optional[str] = None
 
 
 class UserRead(SQLModel):
@@ -36,6 +37,7 @@ class UserRead(SQLModel):
     mail: str
     is_active: bool
     is_admin: bool
+    avatar_key: Optional[str] = None
     created_at: datetime
     updated_at: datetime
 
@@ -68,6 +70,14 @@ class User(SQLModel, table=True):
     is_admin: bool = Field(
         default=False,
         nullable=False
+    )
+
+    # Clave de un avatar predefinido (ej. "fox", "cat"), no una URL/archivo:
+    # de momento la app solo ofrece una lista fija de iconos, sin subida de
+    # imagenes propias.
+    avatar_key: Optional[str] = Field(
+        default=None,
+        sa_column=Column(String(30), nullable=True)
     )
 
     created_at: datetime = Field(

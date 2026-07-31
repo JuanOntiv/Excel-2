@@ -1,7 +1,7 @@
 import { apiClient } from "./client";
 import type { User } from "../types";
 
-export async function updateProfile(payload: Partial<{ name: string; mail: string; password: string }>) {
+export async function updateProfile(payload: Partial<{ name: string; mail: string; password: string; avatar_key: string | null }>) {
   const { data } = await apiClient.patch<User>("/users/me", payload);
   return data;
 }
@@ -12,5 +12,10 @@ export async function deactivateAccount() {
 
 export async function changePassword(payload: { current_password: string; new_password: string }) {
   const { data } = await apiClient.post<{ message: string }>("/users/me/change-password", payload);
+  return data;
+}
+
+export async function logoutAllDevices() {
+  const { data } = await apiClient.post<{ message: string }>("/users/me/logout-all");
   return data;
 }

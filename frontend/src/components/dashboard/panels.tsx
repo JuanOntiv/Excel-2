@@ -1,10 +1,9 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { type ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { ChevronRight, ArrowUpRight, ArrowDownRight, Target, Wallet as WalletIcon, Receipt, Star } from "lucide-react";
 import { formatCurrency } from "../../utils/date";
 import { categoryColor } from "../../utils/categoryColor";
-import { getGoalProgress } from "../../api/goals";
-import type { Goal, GoalProgress, Wallet, Transaction, Category } from "../../types";
+import type { GoalProgress, Wallet, Transaction, Category } from "../../types";
 
 const PANEL_TONES = {
   accent: "bg-accent/10 text-accent",
@@ -93,27 +92,11 @@ function EmptyRow({ text }: { text: string }) {
   return <p className="text-[15px] text-ink-muted-light dark:text-ink-muted-dark">{text}</p>;
 }
 
-export function GoalsPreview({ goals }: { goals: Goal[] }) {
+// El progreso ya viene calculado por el servidor dentro de cada meta (ver
+// list_goals en routes/goals.py), así que este panel ya no encadena un
+// getGoalProgress() por meta.
+export function GoalsPreview({ goals }: { goals: GoalProgress[] }) {
   const shown = goals.slice(0, 3);
-  const shownIds = shown.map((g) => g.id).join(",");
-  const [progressById, setProgressById] = useState<Record<string, GoalProgress>>({});
-
-  useEffect(() => {
-    if (!shownIds) return;
-    let cancelled = false;
-    Promise.all(shown.map((g) => getGoalProgress(g.id).catch(() => null))).then((results) => {
-      if (cancelled) return;
-      const next: Record<string, GoalProgress> = {};
-      results.forEach((p) => {
-        if (p) next[p.id] = p;
-      });
-      setProgressById(next);
-    });
-    return () => {
-      cancelled = true;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [shownIds]);
 
   return (
     <PanelCard title="Metas" icon={<Target size={16} />} tone="accent2" to="/goals">
@@ -122,9 +105,8 @@ export function GoalsPreview({ goals }: { goals: Goal[] }) {
       ) : (
         <ul className="flex flex-col gap-3">
           {shown.map((g) => {
-            const p = progressById[g.id];
-            const pct = p ? Math.max(0, Math.min(100, Math.round(p.percentage))) : null;
-            const onTrack = p ? p.is_on_track : true;
+            const pct = Math.max(0, Math.min(100, Math.round(g.percentage)));
+            const onTrack = g.is_on_track;
             return (
               <ItemRow
                 key={g.id}
@@ -139,20 +121,18 @@ export function GoalsPreview({ goals }: { goals: Goal[] }) {
                     <span
                       className={`text-[15px] font-semibold shrink-0 ${onTrack ? "text-accent2" : "text-negative"}`}
                     >
-                      {pct !== null ? `${pct}%` : formatCurrency(g.target_amount)}
+                      {pct}%
                     </span>
                   </div>
                   <div className="mt-2 h-1.5 rounded-full bg-line-light dark:bg-line-dark overflow-hidden">
                     <div
                       className={`h-full rounded-full ${onTrack ? "bg-accent2" : "bg-negative"}`}
-                      style={{ width: `${pct ?? 0}%` }}
+                      style={{ width: `${pct}%` }}
                     />
                   </div>
-                  {p && (
-                    <p className="mt-1 text-xs text-ink-muted-light dark:text-ink-muted-dark">
-                      {formatCurrency(p.current_amount)} de {formatCurrency(g.target_amount)}
-                    </p>
-                  )}
+                  <p className="mt-1 text-xs text-ink-muted-light dark:text-ink-muted-dark">
+                    {formatCurrency(g.current_amount)} de {formatCurrency(g.target_amount)}
+                  </p>
                 </div>
               </ItemRow>
             );

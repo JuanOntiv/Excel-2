@@ -1,13 +1,7 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useRef } from "react";
 import { Plus, Pencil, Trash2, Eye, EyeOff, ChevronDown, ChevronRight } from "lucide-react";
-import {
-  listCategories,
-  createCategory,
-  updateCategory,
-  deleteCategory,
-  updateCategoryPreference,
-  updateCategoryColor,
-} from "../api/categories";
+import { useCategories } from "../hooks/useCategories";
+import { useCategoriesStore } from "../store/categoriesStore";
 import { CategoryFormModal } from "../components/transactions/CategoryFormModal";
 import { ColorPickerButton } from "../components/common/ColorPickerButton";
 import { NotificationBell } from "../components/notifications/NotificationBell";
@@ -52,7 +46,7 @@ function CategoryTable({
   onDelete,
 }: CategoryTableProps) {
   return (
-    <div className="rounded-xl border border-line-light dark:border-line-dark bg-surface-elevated-light dark:bg-surface-elevated-dark overflow-hidden mb-6">
+    <div className="rounded-xl border border-line-light dark:border-line-dark bg-surface-elevated-light dark:bg-surface-elevated-dark overflow-x-auto mb-6">
       <button
         onClick={onToggle}
         className="flex items-center gap-2 w-full px-4 py-3 text-left text-sm font-medium text-ink-light dark:text-ink-dark hover:bg-line-light/40 dark:hover:bg-line-dark/40"
@@ -144,9 +138,11 @@ function CategoryTable({
 export default function Categories() {
   const { toast } = useToast();
   const confirm = useConfirm();
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
   const [showHidden, setShowHidden] = useState(false);
+  // Cache siempre trae el superset (incluye ocultas); el checkbox solo filtra
+  // en cliente, no vuelve a pedir nada al backend.
+  const { categories: allCategories, isLoading } = useCategories(true);
+  const categories = showHidden ? allCategories : allCategories.filter((c) => !c.is_hidden);
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<Category | null>(null);
   const [showGlobal, setShowGlobal] = useState(true);
@@ -154,20 +150,6 @@ export default function Categories() {
 
   // Debounce por categoría para no spamear el PATCH mientras se arrastra el picker.
   const colorTimers = useRef<Record<string, number>>({});
-
-  const load = useCallback(async () => {
-    setIsLoading(true);
-    try {
-      const data = await listCategories(showHidden);
-      setCategories(data);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [showHidden]);
-
-  useEffect(() => {
-    load();
-  }, [load]);
 
   function openCreate() {
     setEditing(null);
@@ -180,38 +162,41 @@ export default function Categories() {
   }
 
   async function handleSubmit(name: string, type: CategoryType, color: string) {
+    const store = useCategoriesStore.getState();
     if (editing) {
-      await updateCategory(editing.id, { name, type });
+      await store.update(editing.id, { name, type });
       if (color !== categoryColor(editing.id, editing.color)) {
-        await updateCategoryColor(editing.id, color);
+        await store.setPreference(editing.id, { color });
       }
     } else {
-      const created = await createCategory(name, type);
-      await updateCategoryColor(created.id, color);
+      const created = await store.create(name, type);
+      await store.setPreference(created.id, { color });
     }
-    await load();
     toast.success(editing ? "Categoría actualizada." : "Categoría creada.");
   }
 
   async function handleToggleHidden(c: Category) {
-    await updateCategoryPreference(c.id, { is_hidden: !c.is_hidden });
-    await load();
+    await useCategoriesStore.getState().setPreference(c.id, { is_hidden: !c.is_hidden });
   }
 
   function handleColorChange(c: Category, color: string) {
     // Actualización optimista para que el swatch responda de inmediato.
-    setCategories((prev) => prev.map((x) => (x.id === c.id ? { ...x, color } : x)));
+    useCategoriesStore.setState((s) => ({
+      items: s.items.map((x) => (x.id === c.id ? { ...x, color } : x)),
+    }));
     window.clearTimeout(colorTimers.current[c.id]);
     colorTimers.current[c.id] = window.setTimeout(() => {
-      updateCategoryColor(c.id, color).catch(() => load());
+      useCategoriesStore
+        .getState()
+        .setPreference(c.id, { color })
+        .catch(() => useCategoriesStore.getState().refresh());
     }, 400);
   }
 
   async function handleDelete(c: Category) {
     if (!(await confirm({ message: `¿Eliminar "${c.name}"? Esta acción no se puede deshacer.`, tone: "danger" }))) return;
     try {
-      await deleteCategory(c.id);
-      await load();
+      await useCategoriesStore.getState().remove(c.id);
       toast.success("Categoría eliminada.");
     } catch {
       toast.error("No se pudo eliminar la categoría.");
@@ -223,15 +208,18 @@ export default function Categories() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-semibold text-ink-light dark:text-ink-dark">Categorías</h1>
-        <div className="flex items-center gap-2">
-          <NotificationBell align="right" />
+      <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 mb-6">
+        <h1 className="text-xl sm:text-2xl font-semibold text-ink-light dark:text-ink-dark">Categorías</h1>
+        <div className="flex items-center gap-2 shrink-0">
+          {/* En móvil ya está la campana de MobileHeader; esta es solo para desktop. */}
+          <div className="hidden md:block">
+            <NotificationBell align="right" />
+          </div>
           <button
             onClick={openCreate}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-accent text-white font-medium hover:opacity-90"
+            className="flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg bg-accent text-white font-medium hover:opacity-90"
           >
-            <Plus size={18} />
+            <Plus size={18} className="shrink-0" />
             Nueva
           </button>
         </div>

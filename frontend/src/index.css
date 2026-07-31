@@ -67,6 +67,31 @@ h3 {
   font-family: var(--font-display);
 }
 
+/* Cursor por defecto de botones/inputs no es "pointer" en todos los navegadores
+   (Firefox y Safari lo dejan en "default"), así que se fuerza aquí en vez de
+   depender de que cada componente agregue cursor-pointer manualmente. */
+button:not(:disabled),
+[role="button"]:not([aria-disabled="true"]),
+a[href],
+select:not(:disabled),
+label[for],
+input[type="checkbox"]:not(:disabled),
+input[type="radio"]:not(:disabled),
+input[type="submit"]:not(:disabled),
+input[type="button"]:not(:disabled),
+input[type="file"]:not(:disabled),
+summary {
+  cursor: pointer;
+}
+
+button:disabled,
+[aria-disabled="true"],
+input:disabled,
+select:disabled,
+textarea:disabled {
+  cursor: not-allowed;
+}
+
 /* Entrada de los toasts (ver components/ui/Toaster.tsx). */
 @keyframes toast-in {
   from {

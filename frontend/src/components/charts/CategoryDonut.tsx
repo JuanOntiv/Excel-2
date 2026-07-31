@@ -84,7 +84,9 @@ export function CategoryDonut({ transactions, categories, title = "Por categorí
     <div className="rounded-xl border border-line-light dark:border-line-dark bg-surface-elevated-light dark:bg-surface-elevated-dark p-5">
       <h3 className="text-base font-semibold text-ink-light dark:text-ink-dark mb-4">{title}</h3>
 
-      <div className="flex items-center gap-5">
+      {/* En móvil la dona (230px) + leyenda no caben lado a lado sin aplastar
+          la leyenda a un puñado de px: se apilan verticalmente hasta `sm`. */}
+      <div className="flex flex-col sm:flex-row items-center gap-5">
         {/* Dona con el total al centro */}
         <div className="relative shrink-0" style={{ width: 230, height: 230 }}>
           <ResponsiveContainer width="100%" height="100%">
@@ -103,8 +105,8 @@ export function CategoryDonut({ transactions, categories, title = "Por categorí
           </div>
         </div>
 
-        {/* Leyenda a la derecha */}
-        <div className="flex-1 min-w-0">
+        {/* Leyenda: a la derecha en pantallas anchas, debajo en móvil */}
+        <div className="w-full flex-1 min-w-0">
           <ul className="flex flex-col gap-3">
             {visible.map((d, i) => (
               <LegendRow key={i} slice={d} isTop={i === 0} />

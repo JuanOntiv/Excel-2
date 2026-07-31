@@ -1,22 +1,15 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useCallback } from "react";
 import { Plus, Pencil, Trash2, Ban, Target } from "lucide-react";
-import {
-  listGoals,
-  getGoalProgress,
-  createGoal,
-  updateGoal,
-  deleteGoal,
-  cancelGoal,
-} from "../api/goals";
 import type { GoalPayload } from "../api/goals";
-import { listWallets } from "../api/wallets";
-import { listCategories } from "../api/categories";
+import { useGoalsStore } from "../store/goalsStore";
+import { useWallets } from "../hooks/useWallets";
+import { useCategories } from "../hooks/useCategories";
 import { GoalFormModal } from "../components/goals/GoalFormModal";
 import { NotificationBell } from "../components/notifications/NotificationBell";
 import { useConfirm } from "../context/ConfirmContext";
 import { useToast } from "../context/ToastContext";
 import { formatCurrency } from "../utils/date";
-import type { Goal, GoalProgress, GoalType, GoalStatus, Wallet, Category } from "../types";
+import type { Goal, GoalProgress, GoalType, GoalStatus } from "../types";
 
 const TYPE_LABELS: Record<GoalType, string> = {
   income: "Meta de ingresos",
@@ -34,29 +27,15 @@ const STATUS_LABELS: Record<GoalStatus, string> = {
 export default function Goals() {
   const { toast } = useToast();
   const confirm = useConfirm();
-  const [goals, setGoals] = useState<GoalProgress[]>([]);
-  const [wallets, setWallets] = useState<Wallet[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  // Metas y progreso salen de memoria (ver store/goalsStore); el progreso lo
+  // calcula el servidor y viene inline, sin un request por meta.
+  const goals = useGoalsStore((s) => s.items);
+  const goalsStatus = useGoalsStore((s) => s.status);
+  const isLoading = goalsStatus === "idle" || goalsStatus === "loading";
+  const { wallets } = useWallets();
+  const { categories } = useCategories(true);
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<Goal | null>(null);
-
-  const load = useCallback(async () => {
-    setIsLoading(true);
-    try {
-      const list = await listGoals();
-      const withProgress = await Promise.all(list.map((g) => getGoalProgress(g.id)));
-      setGoals(withProgress);
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    load();
-    listWallets().then(setWallets).catch(() => setWallets([]));
-    listCategories(true).then(setCategories).catch(() => setCategories([]));
-  }, [load]);
 
   const walletName = useCallback((id: string | null) => wallets.find((w) => w.id === id)?.name, [wallets]);
   const categoryName = useCallback((id: string | null) => categories.find((c) => c.id === id)?.name, [categories]);
@@ -72,20 +51,19 @@ export default function Goals() {
   }
 
   async function handleSubmit(payload: GoalPayload) {
+    const store = useGoalsStore.getState();
     if (editing) {
-      await updateGoal(editing.id, payload);
+      await store.update(editing.id, payload);
     } else {
-      await createGoal(payload);
+      await store.create(payload);
     }
-    await load();
     toast.success(editing ? "Meta actualizada." : "Meta creada.");
   }
 
   async function handleDelete(g: Goal) {
     if (!(await confirm({ message: `¿Eliminar "${g.name}"?`, tone: "danger" }))) return;
     try {
-      await deleteGoal(g.id);
-      await load();
+      await useGoalsStore.getState().remove(g.id);
       toast.success("Meta eliminada.");
     } catch {
       toast.error("No se pudo eliminar la meta.");
@@ -95,8 +73,7 @@ export default function Goals() {
   async function handleCancel(g: Goal) {
     if (!(await confirm(`¿Cancelar la meta "${g.name}"?`))) return;
     try {
-      await cancelGoal(g.id);
-      await load();
+      await useGoalsStore.getState().cancel(g.id);
       toast.success("Meta cancelada.");
     } catch {
       toast.error("No se pudo cancelar la meta.");
@@ -107,12 +84,15 @@ export default function Goals() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-semibold text-ink-light dark:text-ink-dark">Metas</h1>
-        <div className="flex items-center gap-2">
-          <NotificationBell align="right" />
-          <button onClick={openCreate} className="flex items-center gap-2 px-4 py-2 rounded-lg bg-accent text-white font-medium hover:opacity-90">
-            <Plus size={18} />
+      <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 mb-6">
+        <h1 className="text-xl sm:text-2xl font-semibold text-ink-light dark:text-ink-dark">Metas</h1>
+        <div className="flex items-center gap-2 shrink-0">
+          {/* En móvil ya está la campana de MobileHeader; esta es solo para desktop. */}
+          <div className="hidden md:block">
+            <NotificationBell align="right" />
+          </div>
+          <button onClick={openCreate} className="flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg bg-accent text-white font-medium hover:opacity-90">
+            <Plus size={18} className="shrink-0" />
             Nueva
           </button>
         </div>

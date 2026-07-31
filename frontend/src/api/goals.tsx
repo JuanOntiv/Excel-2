@@ -12,8 +12,11 @@ export interface GoalPayload {
   category_id?: string | null;
 }
 
-export async function listGoals(): Promise<Goal[]> {
-  const { data } = await apiClient.get<Goal[]>("/goals/");
+// Devuelve las metas con su progreso ya calculado por el servidor (ver
+// list_goals en routes/goals.py). Antes había que encadenar un
+// getGoalProgress() por meta; ahora viene inline en una sola petición.
+export async function listGoals(): Promise<GoalProgress[]> {
+  const { data } = await apiClient.get<GoalProgress[]>("/goals/");
   return data;
 }
 

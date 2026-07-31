@@ -139,6 +139,20 @@ def change_my_password(
     return {"message": "Password updated successfully"}
 
 
+@router.post("/me/logout-all", status_code=status.HTTP_200_OK)
+@log_action(action=LogAction.LOGOUT, table="users")
+def logout_all_my_sessions(
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+):
+    """Revoca todos los refresh tokens del usuario autenticado, cerrando
+    la sesion en cualquier otro dispositivo/navegador. El access token
+    de la sesion actual sigue siendo valido hasta que expire por si solo
+    (es stateless), pero ya no podra renovarse via refresh."""
+    revoke_all_user_tokens(current_user.id, session)
+    return {"message": "Logged out from all devices"}
+
+
 @router.delete("/me", status_code=status.HTTP_200_OK)
 @log_action(action=LogAction.DELETE, level=LogLevel.WARNING, table="users")
 def deactivate_my_account(

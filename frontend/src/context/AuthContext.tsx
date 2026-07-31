@@ -3,6 +3,10 @@ import type { ReactNode } from "react";
 import { apiClient, resetSessionExpired } from "../api/client";
 import { executePending } from "../api/recurring";
 import { loginRequest, logoutRequest } from "../api/auth";
+import { useTransactionsStore } from "../store/transactionsStore";
+import { useCategoriesStore } from "../store/categoriesStore";
+import { useWalletsStore } from "../store/walletsStore";
+import { useGoalsStore } from "../store/goalsStore";
 import type { User } from "../types";
 
 interface AuthContextType {
@@ -60,6 +64,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       localStorage.removeItem("access_token");
       localStorage.removeItem("refresh_token");
       setUser(null);
+      // Sin esto, la próxima sesión (otro usuario, mismo navegador) vería en
+      // memoria las transacciones/categorías/carteras del usuario anterior.
+      useTransactionsStore.getState().reset();
+      useCategoriesStore.getState().reset();
+      useWalletsStore.getState().reset();
+      useGoalsStore.getState().reset();
     }
   }
 
