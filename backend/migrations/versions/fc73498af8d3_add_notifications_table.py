@@ -47,3 +47,7 @@ def downgrade() -> None:
     op.drop_index(op.f('ix_notifications_id'), table_name='notifications')
     op.drop_table('notifications')
     # ### end Alembic commands ###
+    # drop_table() no elimina los tipos ENUM de Postgres asociados a las
+    # columnas (quedan huerfanos); sin esto, un upgrade posterior falla con
+    # "type ... already exists".
+    sa.Enum(name='notificationtype').drop(op.get_bind(), checkfirst=True)
