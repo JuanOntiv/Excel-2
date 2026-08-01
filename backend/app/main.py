@@ -19,7 +19,10 @@ app = FastAPI(title="Finanzas API", version="1.0.0")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],  # ver problema 2 para saber por qué es 3000
+    allow_origins=[
+    	"http://localhost:3000",  # ver problema 2 para saber por qué es 3000
+     	"https://excel-2-xypy.vercel.app"
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
