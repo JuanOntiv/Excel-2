@@ -120,9 +120,3 @@ Todas las tablas incluyen `is_active` (Bool, borrado lógico), `created_at` (Tim
 - Status - ENUM (Active, Achieved, Failed, Cancelled)
 ** el progreso (`current_amount`, `percentage`, etc.) se calcula al vuelo a partir de las transacciones del rango/wallet/categoría — no se persiste.
 
-
-## Pendientes 
-- Combinación de reglas con AND (ej. categoría X **y** monto > Y) en `Wallet_Rules`.
-- Permitir al usuario definir frecuencias personalizadas en `Recurring_Transactions` (ej. "cada N días") en vez de solo el ENUM fijo.
-- Validación de `Category.Type` vs `Transaction.Type` a nivel de BD (trigger), si se detectan múltiples puntos de inserción a futuro.
-- ~~Posibilidad de ocultar categorías globales por usuario~~ — hecho, ver `User_Category_Preferences` arriba.
