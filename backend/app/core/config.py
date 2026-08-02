@@ -23,10 +23,38 @@ class Settings:
     REFRESH_TOKEN_EXPIRE_DAYS: int = int(os.getenv("REFRESH_TOKEN_EXPIRE_DAYS", "30"))
 
     # --- Rate limiting de login ---
-    # Tras LOGIN_MAX_ATTEMPTS fallos dentro de la ventana, se bloquean nuevos
-    # intentos hasta que la ventana expire (protege contra fuerza bruta).
+    # El bloqueo es POR CUENTA (el correo introducido), no por IP: detras de un
+    # proxy todas las peticiones llegan con la misma IP y el bloqueo acabaria
+    # siendo global. Tras LOGIN_MAX_ATTEMPTS fallos seguidos sobre la misma
+    # cuenta se bloquea, con castigo progresivo segun LOGIN_LOCKOUT_LADDER:
+    # 1 min el primer bloqueo, 5 min el segundo, 15 min del tercero en
+    # adelante. Sin fallos durante LOGIN_STRIKE_DECAY_SECONDS se olvida todo.
     LOGIN_MAX_ATTEMPTS: int = int(os.getenv("LOGIN_MAX_ATTEMPTS", "5"))
-    LOGIN_ATTEMPT_WINDOW_SECONDS: int = int(os.getenv("LOGIN_ATTEMPT_WINDOW_SECONDS", "900"))
+    LOGIN_LOCKOUT_LADDER_SECONDS: tuple[int, ...] = tuple(
+        int(x) for x in os.getenv("LOGIN_LOCKOUT_LADDER_SECONDS", "60,300,900").split(",") if x.strip()
+    )
+    LOGIN_STRIKE_DECAY_SECONDS: int = int(os.getenv("LOGIN_STRIKE_DECAY_SECONDS", "3600"))
+
+    # --- CORS ---
+    # Origenes permitidos para el frontend, como lista separada por comas.
+    # Se lee de entorno para no tener que tocar codigo cada vez que cambia un
+    # dominio (en Render se define como variable del servicio).
+    CORS_ALLOWED_ORIGINS: list[str] = [
+        o.strip()
+        for o in os.getenv(
+            "CORS_ALLOWED_ORIGINS",
+            "http://localhost:3000,https://excel-2-xypy.vercel.app",
+        ).split(",")
+        if o.strip()
+    ]
+    # Los deploys de preview de Vercel usan un subdominio distinto por rama y
+    # por commit, asi que no se pueden enumerar. Se acotan con un regex ligado
+    # al nombre del proyecto: NO usar `.*\.vercel\.app` (abriria la API a
+    # cualquier sitio alojado en Vercel).
+    CORS_ALLOWED_ORIGIN_REGEX: str = os.getenv(
+        "CORS_ALLOWED_ORIGIN_REGEX",
+        r"^https://excel-2-[a-z0-9-]+\.vercel\.app$",
+    )
 
 
 @lru_cache

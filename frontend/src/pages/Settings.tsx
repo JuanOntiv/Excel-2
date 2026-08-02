@@ -72,7 +72,13 @@ export default function Settings() {
       setCurrentPassword("");
       setNewPassword("");
       setConfirmPassword("");
-      toast.success("Contraseña actualizada.");
+      // Cambiar la contraseña revoca TODOS los refresh tokens en el backend,
+      // incluido el de esta pestaña (ver routes/users.py). Hay que salir de
+      // forma limpia: si nos quedáramos aquí, la app parecería funcionar hasta
+      // que el access token caducara y entonces empezaría a fallar todo sin
+      // explicación. El aviso se muestra ya en /login.
+      await logout();
+      navigate("/login?session=password_changed");
     } catch (err: any) {
       if (err?.response?.status === 400) {
         setPasswordError("La contraseña actual es incorrecta.");
@@ -273,6 +279,12 @@ export default function Settings() {
           </div>
 
           {passwordError && <p className="text-sm text-negative">{passwordError}</p>}
+
+          {/* El backend revoca todas las sesiones al cambiar la contraseña; se
+              avisa antes de enviar para que el logout no sorprenda. */}
+          <p className="text-xs text-ink-muted-light dark:text-ink-muted-dark">
+            Al cambiar la contraseña se cerrará la sesión en todos tus dispositivos, incluido este.
+          </p>
 
           <button
             type="submit"

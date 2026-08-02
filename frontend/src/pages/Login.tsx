@@ -13,9 +13,20 @@ export default function Login() {
   const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
   // El interceptor de axios redirige aquí con ?session=expired cuando el
-  // refresh token deja de ser válido (ver api/client.tsx).
+  // refresh token deja de ser válido (ver api/client.tsx); Settings redirige
+  // con ?session=password_changed tras un cambio de contraseña.
   const [searchParams] = useSearchParams();
-  const sessionExpired = searchParams.get("session") === "expired";
+  const sessionParam = searchParams.get("session");
+  // Ojo con el texto: la sesión NO caduca por inactividad. Dura mientras el
+  // refresh token siga vivo (30 días) o hasta que algo lo revoque —cambio de
+  // contraseña, cierre en todos los dispositivos, baja de la cuenta—, así que
+  // culpar a la inactividad sería mentir sobre lo que pasó.
+  const sessionNotice =
+    sessionParam === "expired"
+      ? "Tu sesión ya no es válida. Vuelve a iniciar sesión."
+      : sessionParam === "password_changed"
+        ? "Contraseña actualizada. Inicia sesión con tu nueva contraseña."
+        : null;
 
   const [mail, setMail] = useState("");
   const [password, setPassword] = useState("");
@@ -34,10 +45,12 @@ export default function Login() {
       if (err?.response?.status === 429) {
         const retryAfter = Number(err.response.headers?.["retry-after"]);
         const minutes = retryAfter ? Math.ceil(retryAfter / 60) : null;
+        // El bloqueo es por cuenta y su duración crece con cada reincidencia,
+        // así que el tiempo se toma siempre de Retry-After, no se asume fijo.
         setError(
           minutes
-            ? `Demasiados intentos fallidos. Intenta de nuevo en ~${minutes} min.`
-            : "Demasiados intentos fallidos. Intenta de nuevo más tarde."
+            ? `Demasiados intentos fallidos para esta cuenta. Intenta de nuevo en ~${minutes} min.`
+            : "Demasiados intentos fallidos para esta cuenta. Intenta de nuevo más tarde."
         );
       } else {
         setError("Correo o contraseña incorrectos.");
@@ -72,9 +85,9 @@ export default function Login() {
         <div className="rounded-xl border border-line-light dark:border-line-dark bg-surface-elevated-light dark:bg-surface-elevated-dark p-6 sm:p-8">
           <h1 className="text-2xl font-semibold mb-6 text-center">Iniciar sesión</h1>
 
-          {sessionExpired && !error && (
+          {sessionNotice && !error && (
             <div className="mb-4 rounded-lg border border-line-light dark:border-line-dark bg-surface-light dark:bg-surface-dark px-3 py-2 text-sm text-ink-muted-light dark:text-ink-muted-dark">
-              Tu sesión expiró por inactividad. Vuelve a iniciar sesión.
+              {sessionNotice}
             </div>
           )}
 

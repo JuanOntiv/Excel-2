@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from app.core.config import settings
 from app.db.db import init_db
 from app.routes import (
     auth,
@@ -19,10 +20,10 @@ app = FastAPI(title="Finanzas API", version="1.0.0")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-    	"http://localhost:3000",
-     	"https://excel-2-xypy.vercel.app"
-    ],
+    # Fijos (dev local + dominio de produccion) y, ademas, los deploys de
+    # preview de Vercel via regex — cada rama genera un subdominio nuevo.
+    allow_origins=settings.CORS_ALLOWED_ORIGINS,
+    allow_origin_regex=settings.CORS_ALLOWED_ORIGIN_REGEX,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

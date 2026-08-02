@@ -136,6 +136,13 @@ def change_my_password(
     current_user.updated_at = datetime.now()
     session.add(current_user)
     session.commit()
+
+    # Cambiar la contrasena cierra TODAS las sesiones, incluida la actual: el
+    # caso de uso real es "creo que alguien entro a mi cuenta", y dejar vivos
+    # los refresh tokens ya emitidos no echaria al intruso. El frontend hace
+    # logout y redirige a /login tras el 200 (ver pages/Settings.tsx), asi que
+    # el usuario no se queda con una sesion que empieza a fallar sola.
+    revoke_all_user_tokens(current_user.id, session)
     return {"message": "Password updated successfully"}
 
 
@@ -164,6 +171,10 @@ def deactivate_my_account(
     current_user.updated_at = datetime.now()
     session.add(current_user)
     session.commit()
+    # Dar de baja la cuenta tiene que cerrar sus sesiones. /auth/refresh ya
+    # rechaza a los inactivos, pero revocar aqui evita dejar tokens canjeables
+    # colgando si la cuenta se reactiva mas tarde.
+    revoke_all_user_tokens(current_user.id, session)
     return {"message": "Account deactivated successfully", "name": current_user.name}
 
 
@@ -218,6 +229,9 @@ def deactivate_user_admin(
     user.updated_at = datetime.now()
     session.add(user)
     session.commit()
+    # Igual que en la baja propia: sin esto el usuario suspendido conservaba
+    # refresh tokens canjeables.
+    revoke_all_user_tokens(user.id, session)
     return {"message": "User deactivated successfully", "user_id": str(user_id), "name": user.name}
 
 

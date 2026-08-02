@@ -63,9 +63,9 @@ def _clean_tables():
 
 @pytest.fixture(autouse=True)
 def _reset_rate_limiter():
-    """El limiter de login guarda estado en memoria del proceso (por IP). Como
-    todos los tests comparten la misma IP ("testclient"), se limpia antes y
-    despues de cada test para que no se filtren intentos entre casos."""
+    """El limiter de login guarda estado en memoria del proceso (por cuenta).
+    Como varios tests reutilizan los mismos correos, se limpia antes y despues
+    de cada test para que no se filtren intentos entre casos."""
     login_rate_limiter.clear()
     yield
     login_rate_limiter.clear()
