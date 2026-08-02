@@ -1,8 +1,8 @@
 import { Link } from "react-router-dom";
-import { PiggyBank, ArrowUpCircle, ArrowDownCircle, Repeat, Wallet, Target, Tag, Moon, Sun } from "lucide-react";
+import { ArrowUpCircle, ArrowDownCircle, Repeat, Wallet, Target, Tag, Moon, Sun } from "lucide-react";
 import { useTheme } from "../context/ThemeContext";
-
-const APP_NAME = "Finanzas";
+import { Logo, Wordmark } from "../components/brand/Logo";
+import { APP_NAME } from "../brand";
 
 const features = [
   {
@@ -45,10 +45,8 @@ export default function Landing() {
       {/* Encabezado con marca y accesos */}
       <header className="flex items-center justify-between px-6 py-4 max-w-6xl mx-auto w-full">
         <div className="flex items-center gap-2.5">
-          <div className="w-9 h-9 rounded-lg bg-accent/15 text-accent flex items-center justify-center shrink-0">
-            <PiggyBank size={20} />
-          </div>
-          <span className="font-bold text-lg">{APP_NAME}</span>
+          <Logo size={36} />
+          <Wordmark />
         </div>
         <div className="flex items-center gap-3">
           <button

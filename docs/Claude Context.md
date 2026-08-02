@@ -59,6 +59,13 @@ A full-stack personal finance manager. Success criteria: a deployed, production-
 
 16. **`TransactionRead` has two wallet fields and they mean different things.** `wallet_id` = the **manual** assignment only (pre-fills the edit form). `wallet_ids` = **every** associated wallet, manual + rule-derived — this is what `GET /transactions?wallet_id=` actually matches on server-side, so it's the one client-side wallet filtering must use (`byWallet` in `store/selectors.ts`). Filtering the cache by `wallet_id` would silently drop every rule-assigned transaction.
 
+17. **Branding lives in two files and neither is where you'd guess. Added 2026-08-02.** The app name used to be a `const APP_NAME` copy-pasted into Sidebar, Landing, Login and Register, plus a hardcoded `<title>` in `index.html` — five places to edit for a rename.
+    - **`src/brand.ts` holds `APP_NAME` and nothing else, and must stay free of imports.** It is loaded by `vite.config.ts`, which runs in Node outside the app bundle: a single `import` of React, a `.png`, or anything browser-specific breaks the Vite config, not just a component. This is why `LOGO_SRC` is *not* here — it depends on a Vite asset import.
+    - **The `<title>` is injected at build time**, not set from React. `index.html` contains the literal `%APP_NAME%` and `brandHtmlPlugin` in `vite.config.ts` substitutes it via `transformIndexHtml` (which runs in dev *and* build). Chosen over `document.title` so the name is in the served HTML — no flash of a stale title, and crawlers/link previews that never execute the bundle still see it. Don't "simplify" this into a `useEffect`.
+    - **`src/components/brand/Logo.tsx` exposes `<Logo>` (image) and `<Wordmark>` (name).** The logo is `import`ed from `./logo.png` — a module import, not the string `"/logo.png"`. Anything under `src/` is invisible to a direct URL; only `public/` is served that way. That exact mistake is why the logo silently rendered its fallback icon on first attempt.
+    - `<Logo>` falls back to a lucide `PiggyBank` on `onError`. With a static import a missing file fails the *build*, so that path now only covers a corrupt file or a fetch failure.
+    - The brand font is `--font-brand` (Fraunces, via the Google Fonts `<link>` in `index.html`), applied **only** by `<Wordmark>` — it is not `--font-display`, which is Bricolage Grotesque for `h1`–`h3` app-wide.
+
 ## Known backend bugs found & fixed during frontend integration
 
 - `TransactionCreate.categoty_id` (typo) vs. route using `trx_in.category_id` → fixed to `category_id` in the model.
@@ -145,6 +152,7 @@ src/
 │   ├── wallets/            # WalletFormModal, WalletRuleFormModal, WalletRulesPanel
 │   ├── goals/              # GoalFormModal
 │   ├── admin/              # ResetPasswordModal
+│   ├── brand/              # Logo.tsx (<Logo> = the image, <Wordmark> = the app name) + logo.png. See gotcha #17.
 │   └── dashboard/          # SummaryCard, MonthlyTrendChart, ExpenseDonut, panels.tsx (GoalsPreview, WalletsPreview, RecentTransactionsPreview)
 ├── pages/                  # One per route; most are thin wrappers around the components above. Includes
 │                             Admin.tsx (behind AdminRoute), Goals.tsx, NotFound.tsx (catch-all "*" route).
@@ -153,6 +161,7 @@ src/
 │   ├── PublicOnlyRoute.tsx # Redirects away from /login,/register if already authenticated
 │   └── AdminRoute.tsx      # Redirects/blocks unless current_user.is_admin
 ├── types/index.ts          # All shared TS interfaces/types — check here first before assuming a field name
+├── brand.ts                # APP_NAME, single source of truth. Deliberately import-free — vite.config.ts loads it. See gotcha #17.
 └── utils/date.tsx          # Date range helpers + formatCurrency (MXN, centralized)
 ```
 

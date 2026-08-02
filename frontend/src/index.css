@@ -7,6 +7,11 @@
   --font-sans: "Public Sans", ui-sans-serif, system-ui, -apple-system, sans-serif;
   --font-display: "Bricolage Grotesque", "Public Sans", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  /* Marca: solo para el nombre de la app junto al logo (ver <Wordmark /> en components/brand/Logo.tsx).
+     Fraunces se eligió sobre Playfair Display por su eje óptico (opsz): el logotipo se
+     compone a ~19px y Playfair, didone de contraste extremo, adelgaza ahí los trazos finos.
+     El respaldo es serif a propósito, para no saltar a la sans del resto de la UI si falla la carga. */
+  --font-brand: "Fraunces", ui-serif, Georgia, "Times New Roman", serif;
 
   /* Escala tipográfica ampliada (más grande y con más aire que el default de Tailwind) */
   --text-xs: 0.8125rem;

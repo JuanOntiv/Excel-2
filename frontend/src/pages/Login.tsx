@@ -2,11 +2,10 @@
 import { useState } from "react";
 import type { FormEvent } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { PiggyBank, Moon, Sun } from "lucide-react";
+import { Moon, Sun } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { useTheme } from "../context/ThemeContext";
-
-const APP_NAME = "Finanzas";
+import { Logo, Wordmark } from "../components/brand/Logo";
 
 export default function Login() {
   const { login } = useAuth();
@@ -76,10 +75,8 @@ export default function Login() {
 
       <div className="w-full max-w-sm">
         <Link to="/" className="flex flex-col items-center gap-2.5 mb-6">
-          <div className="w-11 h-11 rounded-lg bg-accent/15 text-accent flex items-center justify-center">
-            <PiggyBank size={22} />
-          </div>
-          <span className="font-bold text-lg">{APP_NAME}</span>
+          <Logo size={44} />
+          <Wordmark />
         </Link>
 
         <div className="rounded-xl border border-line-light dark:border-line-dark bg-surface-elevated-light dark:bg-surface-elevated-dark p-6 sm:p-8">

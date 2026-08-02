@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { NavLink, useNavigate } from "react-router-dom";
+import { Link, NavLink, useNavigate } from "react-router-dom";
 import {
   LayoutDashboard,
   ArrowDownCircle,
@@ -15,11 +15,11 @@ import {
   ChevronLeft,
   ChevronRight,
   Tag,
-  PiggyBank,
   History,
 } from "lucide-react";
 import { useTheme } from "../../context/ThemeContext";
 import { useAuth } from "../../context/AuthContext";
+import { Logo, Wordmark } from "../brand/Logo";
 
 interface SidebarProps {
   collapsed: boolean;
@@ -35,9 +35,6 @@ const navItems = [
   { to: "/wallets", icon: Wallet, label: "Carteras" },
   { to: "/goals", icon: Target, label: "Metas" },
 ];
-
-// Nombre de la app mostrado junto al logo. Cámbialo por el tuyo.
-const APP_NAME = "Finanzas";
 
 export function Sidebar({ collapsed, onToggle }: SidebarProps) {
   const { theme, toggleTheme } = useTheme();
@@ -73,21 +70,23 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
         collapsed ? "w-16" : "w-56"
       }`}
     >
-      {/* Marca: logo + nombre.
-          Para usar tu logo real, reemplaza el <div> del placeholder por:
-            <img src="/logo.svg" alt={APP_NAME} className="w-9 h-9 rounded-lg shrink-0" />
-          (coloca el archivo en frontend/public/logo.svg). */}
+      {/* Marca: logo + nombre, centrados en ambos estados (ver components/brand/Logo.tsx).
+          El enlace envuelve solo la marca y no la barra entera, para que el espacio
+          vacío a los lados no navegue al hacer click. */}
       <div
-        className={`flex items-center h-16 border-b border-line-light dark:border-line-dark ${
-          collapsed ? "justify-center px-2" : "px-4 gap-2.5"
+        className={`flex items-center justify-center h-16 border-b border-line-light dark:border-line-dark ${
+          collapsed ? "px-2" : "px-4"
         }`}
       >
-        <div className="w-9 h-9 rounded-lg bg-accent/15 text-accent flex items-center justify-center shrink-0">
-          <PiggyBank size={20} />
-        </div>
-        {!collapsed && (
-          <span className="font-bold text-lg text-ink-light dark:text-ink-dark truncate">{APP_NAME}</span>
-        )}
+        <Link
+          to="/dashboard"
+          className={`flex items-center min-w-0 hover:opacity-80 transition-opacity ${
+            collapsed ? "" : "gap-2.5"
+          }`}
+        >
+          <Logo size={36} />
+          {!collapsed && <Wordmark className="text-ink-light dark:text-ink-dark truncate" />}
+        </Link>
       </div>
 
       {/* Botón de colapso */}

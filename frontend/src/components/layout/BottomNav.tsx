@@ -1,6 +1,5 @@
 import { NavLink } from "react-router-dom";
 import {
-  LayoutDashboard,
   ArrowDownCircle,
   ArrowUpCircle,
   Repeat,
@@ -10,9 +9,10 @@ import {
   ShieldCheck,
 } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
+import { Logo } from "../brand/Logo";
 
 const navItems = [
-  { to: "/dashboard", icon: LayoutDashboard, label: "Resumen" },
+  { to: "/dashboard", icon: Logo, label: "Resumen" },
   { to: "/income", icon: ArrowUpCircle, label: "Ingresos" },
   { to: "/expenses", icon: ArrowDownCircle, label: "Egresos" },
   { to: "/recurring", icon: Repeat, label: "Recurr." },
