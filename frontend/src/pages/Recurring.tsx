@@ -1,15 +1,8 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState } from "react";
 import { Plus } from "lucide-react";
-import {
-  listRecurring,
-  createRecurring,
-  updateRecurring,
-  cancelRecurring,
-  pauseRecurring,
-  resumeRecurring,
-  executeRecurringNow,
-  listPendingConfirmation,
-} from "../api/recurring";
+import type { createRecurring } from "../api/recurring";
+import { useRecurringStore } from "../store/recurringStore";
+import { useRecurring } from "../hooks/useRecurring";
 import { useCategories } from "../hooks/useCategories";
 import { RecurringTable } from "../components/recurring/RecurringTable";
 import { RecurringFormModal } from "../components/recurring/RecurringFormModal";
@@ -23,29 +16,11 @@ export default function Recurring() {
   const { toast } = useToast();
   const confirm = useConfirm();
   const { categories } = useCategories(false);
-  const [items, setItems] = useState<RecurringTransaction[]>([]);
-  const [pending, setPending] = useState<RecurringTransaction[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  // Datos desde la cache en memoria: AppShell ya llamó a bootstrap(), así que
+  // el "Cargando..." solo se ve la primera vez de la sesión, no en cada visita.
+  const { items, pending, isLoading } = useRecurring();
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<RecurringTransaction | null>(null);
-
-  const load = useCallback(async () => {
-    setIsLoading(true);
-    try {
-      const [recurringData, pendingData] = await Promise.all([
-        listRecurring(),
-        listPendingConfirmation(),
-      ]);
-      setItems(recurringData);
-      setPending(pendingData);
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    load();
-  }, [load]);
 
   function openCreate() {
     setEditing(null);
@@ -58,19 +33,18 @@ export default function Recurring() {
   }
 
   async function handleSubmit(payload: Parameters<typeof createRecurring>[0]) {
+    const store = useRecurringStore.getState();
     if (editing) {
-      await updateRecurring(editing.id, payload);
+      await store.update(editing.id, payload);
     } else {
-      await createRecurring(payload);
+      await store.create(payload);
     }
-    await load();
     toast.success(editing ? "Recurrencia actualizada." : "Recurrencia creada.");
   }
 
   async function handlePause(t: RecurringTransaction) {
     try {
-      await pauseRecurring(t.id);
-      await load();
+      await useRecurringStore.getState().pause(t.id);
       toast.success(`"${t.name}" pausada.`);
     } catch {
       toast.error("No se pudo pausar la recurrencia.");
@@ -79,8 +53,7 @@ export default function Recurring() {
 
   async function handleResume(t: RecurringTransaction) {
     try {
-      await resumeRecurring(t.id);
-      await load();
+      await useRecurringStore.getState().resume(t.id);
       toast.success(`"${t.name}" reanudada.`);
     } catch {
       toast.error("No se pudo reanudar la recurrencia.");
@@ -90,8 +63,7 @@ export default function Recurring() {
   async function handleCancel(t: RecurringTransaction) {
     if (!(await confirm({ message: `¿Cancelar "${t.name}"? Dejará de ejecutarse.`, tone: "danger" }))) return;
     try {
-      await cancelRecurring(t.id);
-      await load();
+      await useRecurringStore.getState().cancel(t.id);
       toast.success(`"${t.name}" cancelada.`);
     } catch {
       toast.error("No se pudo cancelar la recurrencia.");
@@ -101,8 +73,9 @@ export default function Recurring() {
   async function handleExecuteNow(t: RecurringTransaction) {
     if (!(await confirm(`¿Ejecutar "${t.name}" ahora?`))) return;
     try {
-      await executeRecurringNow(t.id);
-      await load();
+      // El store invalida transacciones y metas: ejecutar crea una Transaction
+      // real y mueve el progreso de las metas (ver recurringStore.executeNow).
+      await useRecurringStore.getState().executeNow(t.id);
       toast.success(`"${t.name}" ejecutada.`);
     } catch {
       toast.error("No se pudo ejecutar la recurrencia.");

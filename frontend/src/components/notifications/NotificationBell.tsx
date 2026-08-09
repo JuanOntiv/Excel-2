@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useLayoutEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Bell,
@@ -28,6 +28,11 @@ const ENTITY_ROUTE: Record<string, string> = {
   goal: "/goals",
 };
 
+// Ancho del panel y margen mínimo contra los bordes de la pantalla.
+// Deben coincidir con las clases `w-80` y `max-w-[calc(100vw-2rem)]` de abajo.
+const PANEL_WIDTH = 320;
+const VIEWPORT_MARGIN = 16;
+
 function relativeTime(iso: string): string {
   const then = new Date(iso).getTime();
   const diff = Date.now() - then;
@@ -44,6 +49,7 @@ function relativeTime(iso: string): string {
 export function NotificationBell({ align = "right" }: { align?: "right" | "left" }) {
   const { notifications, unreadCount, markRead, markAllRead, remove } = useNotifications();
   const [open, setOpen] = useState(false);
+  const [shift, setShift] = useState(0);
   const ref = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
 
@@ -55,6 +61,34 @@ export function NotificationBell({ align = "right" }: { align?: "right" | "left"
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [open]);
+
+  // El panel se ancla al botón (`right-0`), pero en móvil la campana no es el
+  // último icono del header: tiene tema/historial/ajustes a su derecha. Anclado
+  // así, sus 320px de ancho se salían por el borde izquierdo mientras sobraba
+  // hueco a la derecha. Medimos el botón y desplazamos el panel lo justo para
+  // que quepa, en vez de fijar un offset por breakpoint.
+  useLayoutEffect(() => {
+    if (!open) {
+      setShift(0);
+      return;
+    }
+    function reposition() {
+      const anchor = ref.current?.getBoundingClientRect();
+      if (!anchor) return;
+      const vw = document.documentElement.clientWidth;
+      const width = Math.min(PANEL_WIDTH, vw - VIEWPORT_MARGIN * 2);
+      // Posición natural del panel según el anclaje, sin corregir.
+      const left = align === "right" ? anchor.right - width : anchor.left;
+      const clamped = Math.min(
+        Math.max(left, VIEWPORT_MARGIN),
+        vw - VIEWPORT_MARGIN - width,
+      );
+      setShift(clamped - left);
+    }
+    reposition();
+    window.addEventListener("resize", reposition);
+    return () => window.removeEventListener("resize", reposition);
+  }, [open, align]);
 
   function handleClick(n: AppNotification) {
     if (!n.is_read) markRead(n.id);
@@ -82,6 +116,7 @@ export function NotificationBell({ align = "right" }: { align?: "right" | "left"
 
       {open && (
         <div
+          style={shift ? { transform: `translateX(${shift}px)` } : undefined}
           className={`absolute z-50 mt-2 w-80 max-w-[calc(100vw-2rem)] rounded-xl border border-line-light dark:border-line-dark bg-surface-elevated-light dark:bg-surface-elevated-dark shadow-xl overflow-hidden ${
             align === "right" ? "right-0" : "left-0"
           }`}

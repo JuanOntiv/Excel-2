@@ -8,6 +8,7 @@ import { useTransactionsStore } from "../../store/transactionsStore";
 import { useCategoriesStore } from "../../store/categoriesStore";
 import { useWalletsStore } from "../../store/walletsStore";
 import { useGoalsStore } from "../../store/goalsStore";
+import { useRecurringStore } from "../../store/recurringStore";
 
 export function AppShell({ children }: { children: ReactNode }) {
   const [collapsed, setCollapsed] = useState(false);
@@ -21,6 +22,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     useCategoriesStore.getState().bootstrap();
     useWalletsStore.getState().bootstrap();
     useGoalsStore.getState().bootstrap();
+    useRecurringStore.getState().bootstrap();
   }, []);
 
   return (

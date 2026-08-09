@@ -1,8 +1,8 @@
 import { apiClient } from "./client";
 import type { RecurringTransaction, TransactionType, RecurringFrequency } from "../types";
 
-export async function listRecurring(): Promise<RecurringTransaction[]> {
-  const { data } = await apiClient.get<RecurringTransaction[]>("/recurring-transactions");
+export async function listRecurring(params?: { skip?: number; limit?: number }): Promise<RecurringTransaction[]> {
+  const { data } = await apiClient.get<RecurringTransaction[]>("/recurring-transactions", { params });
   return data;
 }
 
@@ -56,7 +56,13 @@ export async function listPendingConfirmation(): Promise<RecurringTransaction[]>
   return data;
 }
 
-export async function executePending() {
-  const { data } = await apiClient.post("/recurring-transactions/execute-pending");
+export interface ExecutePendingResult {
+  message: string;
+  executed: number;
+  errors: { id: string; error: string }[] | null;
+}
+
+export async function executePending(): Promise<ExecutePendingResult> {
+  const { data } = await apiClient.post<ExecutePendingResult>("/recurring-transactions/execute-pending");
   return data;
 }

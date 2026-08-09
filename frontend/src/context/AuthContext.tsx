@@ -7,6 +7,7 @@ import { useTransactionsStore } from "../store/transactionsStore";
 import { useCategoriesStore } from "../store/categoriesStore";
 import { useWalletsStore } from "../store/walletsStore";
 import { useGoalsStore } from "../store/goalsStore";
+import { useRecurringStore } from "../store/recurringStore";
 import type { User } from "../types";
 
 interface AuthContextType {
@@ -18,6 +19,29 @@ interface AuthContextType {
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+/**
+ * execute-pending puede crear transacciones reales (y avanzar next_execution)
+ * justo mientras AppShell está arrancando sus bootstrap(). Sin esto, lo que se
+ * acaba de registrar solo aparecía tras recargar la página.
+ *
+ * Se espera al bootstrap en curso ANTES de refrescar: transactionsStore carga
+ * por lotes y dos cargas simultáneas pueden intercalar sus `set`, duplicando
+ * filas. bootstrap() es idempotente y resuelve cuando la carga en vuelo acaba.
+ */
+async function syncStoresAfterPendingExecution() {
+  const transactions = useTransactionsStore.getState();
+  await transactions.bootstrap();
+  await transactions.refresh();
+
+  const recurring = useRecurringStore.getState();
+  await recurring.bootstrap();
+  await recurring.refresh();
+
+  const goals = useGoalsStore.getState();
+  await goals.bootstrap();
+  await goals.revalidate();
+}
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
@@ -51,7 +75,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     resetSessionExpired();
     await fetchCurrentUser();
 
-    executePending().catch(() => {});
+    // Sin await: no debe retrasar la entrada a la app. Si generó algo, los
+    // stores se ponen al día en segundo plano.
+    executePending()
+      .then((result) => {
+        if (!result?.executed) return;
+        return syncStoresAfterPendingExecution();
+      })
+      .catch(() => {});
   }
 
   async function logout() {
@@ -70,6 +101,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       useCategoriesStore.getState().reset();
       useWalletsStore.getState().reset();
       useGoalsStore.getState().reset();
+      useRecurringStore.getState().reset();
     }
   }
 

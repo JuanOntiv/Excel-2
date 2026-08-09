@@ -126,6 +126,13 @@ def list_recurring(
     )
     if status_filter:
         query = query.where(RecurringTransaction.status == status_filter)
+    # Sin ORDER BY, skip/limit paginan sobre un orden arbitrario de Postgres:
+    # una pagina puede repetir o saltarse filas. El desempate por id es lo que
+    # hace estable la paginacion, no created_at por si solo.
+    query = query.order_by(
+        RecurringTransaction.created_at.desc(),
+        RecurringTransaction.id.desc(),
+    )
     return session.exec(query.offset(skip).limit(limit)).all()
 
 
