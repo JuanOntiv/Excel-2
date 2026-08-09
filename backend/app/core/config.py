@@ -7,17 +7,40 @@ import os
 from functools import lru_cache
 
 
+def _env_flag(name: str, default: bool) -> bool:
+    raw = os.getenv(name)
+    if raw is None:
+        return default
+    return raw.strip().lower() in ("1", "true", "yes", "on")
+
+
 class Settings:
+    # --- Entorno ---
+    # "development" | "production". Solo decide que se expone de mas en local
+    # (Swagger); no cambia ninguna regla de negocio ni de autorizacion.
+    ENVIRONMENT: str = os.getenv("ENVIRONMENT", "development")
+    IS_PRODUCTION: bool = ENVIRONMENT.strip().lower() == "production"
+
     # --- Base de datos ---
     DATABASE_URL: str = os.getenv(
         "DATABASE_URL",
         "postgresql+psycopg2://postgres:postgres@db:5432/finanzas_db"
     )
 
+    # create_all() al arrancar es comodo en local, pero el esquema lo gobierna
+    # Alembic: en un despliegue es una escritura de esquema en cada boot. Se
+    # deja ACTIVO por defecto a proposito — apagarlo en un entorno donde el
+    # arranque no corre `alembic upgrade head` dejaria la BD sin tablas. Poner
+    # a "false" solo tras confirmar que las migraciones corren en el deploy.
+    RUN_CREATE_ALL_ON_STARTUP: bool = _env_flag("RUN_CREATE_ALL_ON_STARTUP", True)
+
     # --- JWT ---
-    # IMPORTANTE: en produccion, generar con `openssl rand -hex 32` y
-    # cargarlo via variable de entorno, nunca hardcodear.
-    JWT_SECRET_KEY: str = os.getenv("JWT_SECRET_KEY", "dev-secret-change-me")
+    # Sin valor por defecto A PROPOSITO: es la clave con la que se firman los
+    # access tokens, asi que un default en el repo equivale a publicarla —
+    # cualquiera podria fabricar un token valido para el user_id que quisiera.
+    # Si falta, la app no arranca (ver get_settings) en vez de arrancar
+    # insegura en silencio. Generar con `openssl rand -hex 32`.
+    JWT_SECRET_KEY: str = os.getenv("JWT_SECRET_KEY", "")
     JWT_ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "15"))
     REFRESH_TOKEN_EXPIRE_DAYS: int = int(os.getenv("REFRESH_TOKEN_EXPIRE_DAYS", "30"))
@@ -59,7 +82,19 @@ class Settings:
 
 @lru_cache
 def get_settings() -> Settings:
-    return Settings()
+    settings = Settings()
+
+    # Fallar al arrancar, no en la primera peticion: un backend en pie que
+    # firma tokens con una clave conocida es peor que un backend caido.
+    if not settings.JWT_SECRET_KEY.strip():
+        raise RuntimeError(
+            "JWT_SECRET_KEY no esta definida. Es la clave con la que se firman "
+            "los access tokens. Genera una con `openssl rand -hex 32` y cargala "
+            "como variable de entorno (en local va en el .env; en Render, en la "
+            "seccion Environment del servicio)."
+        )
+
+    return settings
 
 
 settings = get_settings()
